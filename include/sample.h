@@ -7,4 +7,6 @@
 
 void greet(void);
 
+int add(int a, int b);
+
 #endif
