@@ -10,7 +10,7 @@ void main(void)
 	while (true) {
 		printk("Hello World from the app!\n");
 
-		printk("%d\n", test_bme680());
+		// printk("%d\n", test_bme680());
 
 		printk("%d\n", test_adxl());
 

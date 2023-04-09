@@ -1,6 +1,199 @@
-#include "bme680.h"
+#include <bme680.h>
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
 
-int test_bme680(void)
+LOG_MODULE_REGISTER(bme680);
+
+/** Master -> write -> Slave
+ * 1. Broadcast START
+ * 2. Broadcast TARGET ADDR (7bit) + R/W bit set to WRITE
+ * 3. Send the byte indicating the internal slave address
+ * 4. <- ACK
+ * 5. Send byte of data
+ */
+
+static bme680_calib_data_t calib_data = {};
+
+static float calc_temperature(uint32_t temp_adc);
+
+static int set_forced_mode(const struct device *i2c_dev);
+
+/**
+ * @brief Read an internal register of the BME680 sensor
+ *
+ * @param i2c_dev I2C device controller
+ * @param read_buf buffer to store the data read on the bus
+ * @param num_bytes quantity of data to be read
+ * @param start_address Internal address of the sensor
+ * @return int
+ */
+static int bme680_read_reg(const struct device *i2c_dev, uint8_t *read_buf, uint8_t num_bytes,
+			       uint8_t start_address)
 {
-	return BME680_CONFIG;
+	int err = 0;
+	struct i2c_msg msg[2];
+	// Write on the I2C bus the internal address of the sensor we want to read to
+	msg[0].buf = &start_address;
+	msg[0].len = 1;
+	msg[0].flags = I2C_MSG_WRITE;
+	// Read the data from the bus
+	msg[1].buf = (uint8_t *)read_buf;
+	msg[1].len = num_bytes;
+	msg[1].flags = I2C_MSG_RESTART | I2C_MSG_READ | I2C_MSG_STOP;
+	err = i2c_transfer(i2c_dev, msg, 2, BME680_ADDR);
+	return err;
+}
+
+/**
+ * @brief Write an internal register of the BME680 sensor
+ *
+ * @param i2c_dev
+ * @param write_buf
+ * @param num_bytes
+ * @param start_address
+ * @return int
+ */
+static int bme680_write_reg(const struct device *i2c_dev, uint8_t *write_buf, uint8_t num_bytes,
+				uint8_t start_address)
+{
+	int err = 0;
+	struct i2c_msg msg[2];
+	// Write on the I2C bus the internal address of the sensor we want to read to
+	msg[0].buf = &start_address;
+	msg[0].len = 1;
+	msg[0].flags = I2C_MSG_WRITE;
+	// Read the data from the bus
+	msg[1].buf = (uint8_t *)write_buf;
+	msg[1].len = num_bytes;
+	msg[1].flags = I2C_MSG_WRITE | I2C_MSG_STOP;
+	err = i2c_transfer(i2c_dev, msg, 2, BME680_ADDR);
+	return err;
+}
+
+/**
+ * @brief Read the chip ID to verify the communication with the device
+ *
+ * @param i2c_dev
+ */
+void bme680_chip_id(const struct device *i2c_dev)
+{
+	int err = 0;
+	uint8_t chip_id = 0;
+	err = bme680_read_reg(i2c_dev, &chip_id, 1, BME680_ID);
+	if (err != 0) {
+		LOG_ERR("bme680_chip_id\n");
+	}
+	printf("Chip ID 0x%02x\n", chip_id);
+	if (chip_id != 0x61) // reset state of a read only register
+	{
+		LOG_ERR("Wrong chip ID");
+	}
+}
+
+bme680_calib_data_t bme680_calib_data(const struct device *i2c_dev)
+{
+	int err = 0;
+	uint8_t read_buf[8] = {0};
+	// par_t1
+	err = bme680_read_reg(i2c_dev, read_buf, 2, 0xE9);
+	if (err != 0) {
+		LOG_ERR("bme680_calib_data\n");
+	}
+	calib_data.par_t1 = (read_buf[0]) | (read_buf[1] << 8);
+	// par_t2 & par_t3
+	err = bme680_read_reg(i2c_dev, read_buf, 3, 0x8A);
+	if (err != 0) {
+		LOG_ERR("bme680_calib_data\n");
+	}
+	calib_data.par_t2 = (read_buf[0]) | (read_buf[1] << 8);
+	calib_data.par_t3 = (read_buf[2]);
+	printf("PARAMS: t1=0x%02x t2=0x%02x t3=0x%02x\n", calib_data.par_t1, calib_data.par_t2,
+	       calib_data.par_t3);
+	return calib_data;
+}
+
+void bme680_soft_reset(const struct device *i2c_dev)
+{
+	int err = 0;
+	uint8_t soft_rst_cmd = 0xB6;
+
+	err = bme680_write_reg(i2c_dev, &soft_rst_cmd, 1, BME680_RESET);
+	if (err != 0) {
+		LOG_ERR("bme680_soft_reset\n");
+	}
+}
+
+void bme680_config_init(const struct device *i2c_dev)
+{
+	int err = 0;
+	uint8_t iir_filter = 0;
+	// Set the IIR filter
+	err = bme680_write_reg(i2c_dev, &iir_filter, 1, BME680_CONFIG);
+	if (err != 0) {
+		LOG_ERR("bme680_config_init\n");
+	}
+	err = set_forced_mode(i2c_dev);
+	if (err != 0) {
+		LOG_ERR("bme680_config_init\n");
+	}
+}
+
+void bme680_read_temperature(const struct device *i2c_dev)
+{
+	int err = 0;
+	err = set_forced_mode(i2c_dev);
+	if (err != 0) {
+		LOG_ERR("bme680_read_temperature\n");
+	}
+	uint8_t read_buf[8] = {0};
+	err = bme680_read_reg(i2c_dev, read_buf, 3, BME680_TEMP_MSB);
+	if (err != 0) {
+		LOG_ERR("read_temp\n");
+	}
+	uint32_t raw_temp = (read_buf[0] << 12) | (read_buf[1] << 4) | (read_buf[2] >> 4);
+	printf("RAW: %d - %02x %02x %02x\n", raw_temp, read_buf[0], read_buf[1], read_buf[2]);
+	// hexdump(read_buf, 8);
+	printf("Temp: %f\n", calc_temperature(raw_temp));
+}
+
+static int set_forced_mode(const struct device *i2c_dev)
+{
+	int err = 0;
+	uint8_t temp_oversampling = (0 << 7) | (0 << 6) | (1 << 5);
+	uint8_t forced_mode = 0x01;
+	uint8_t byte = temp_oversampling | forced_mode;
+	err = bme680_write_reg(i2c_dev, &byte, 1, BME680_CTRL_MEAS);
+	return err;
+}
+
+/**
+ * @brief calc_temperature function got from the Bosch repository
+ *
+ * @param temp_adc
+ * @param data
+ * @return float
+ */
+static float calc_temperature(uint32_t temp_adc)
+{
+	float var1;
+	float var2;
+	float calc_temp;
+
+	/* calculate var1 data */
+	var1 = ((((float)temp_adc / 16384.0f) - ((float)calib_data.par_t1 / 1024.0f)) *
+		((float)calib_data.par_t2));
+
+	/* calculate var2 data */
+	var2 = (((((float)temp_adc / 131072.0f) - ((float)calib_data.par_t1 / 8192.0f)) *
+		 (((float)temp_adc / 131072.0f) - ((float)calib_data.par_t1 / 8192.0f))) *
+		((float)calib_data.par_t3 * 16.0f));
+
+	/* t_fine value*/
+	calib_data.t_fine = (var1 + var2);
+
+	/* compensated temperature data*/
+	calc_temp = ((calib_data.t_fine) / 5120.0f);
+
+	return calc_temp;
 }
