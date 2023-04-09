@@ -2,5 +2,5 @@
 
 int test_bme680(void)
 {
-	return 42;
+	return BME680_CONFIG;
 }

@@ -2,5 +2,5 @@
 
 int test_adxl(void)
 {
-	return 42;
+	return ADXL345_BW_RATE;
 }
