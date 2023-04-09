@@ -13,7 +13,12 @@ LOG_MODULE_REGISTER(bme680);
  * 5. Send byte of data
  */
 
-static bme680_calib_data_t calib_data = {};
+static bme680_temp_calib_data_t calib_data = {};
+
+const int32_t const_array1_int[] = {2147483647, 2147483647, 2147483647, 2147483647, 2147483647, 2126008810, 2147483647, 2130303777, 2147483647, 2147483647, 2143188679, 2136746228, 2147483647, 2126008810, 2147483647, 2147483647};
+const int32_t const_array2_int[] = {4096000000, 2048000000, 1024000000, 512000000, 255744255, 127110228, 64000000, 32258064, 16016016, 8000000, 4000000, 2000000, 1000000, 500000, 250000, 125000};
+const float const_array1[] = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.99f, 1.0f, 0.992f, 1.0f, 1.0f, 0.998f, 0.995f, 1.0f, 0.99f, 1.0f, 1.0f};
+const float const_array2[] = {8000000.0f, 4000000.0f, 2000000.0f, 1000000.0f, 499500.4995f, 248262.1648f, 125000.0f, 63004.03226f, 31281.28128f, 15625.0f, 7812.5f, 3906.25f, 1953.125f, 976.5625f, 488.28125f, 244.140625f};
 
 static float calc_temperature(uint32_t temp_adc);
 
@@ -91,7 +96,7 @@ void bme680_chip_id(const struct device *i2c_dev)
 	}
 }
 
-bme680_calib_data_t bme680_calib_data(const struct device *i2c_dev)
+bme680_temp_calib_data_t bme680_calib_data(const struct device *i2c_dev)
 {
 	int err = 0;
 	uint8_t read_buf[8] = {0};
