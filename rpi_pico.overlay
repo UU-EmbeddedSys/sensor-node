@@ -4,7 +4,7 @@
 &pinctrl {
     i2c1_default: i2c1_default {
         group1 {
-            pinmux = <I2C1_SDA_P2>, <I2C1_SCL_P3>;
+            pinmux = <I2C1_SDA_P6>, <I2C1_SCL_P7>;
             input-enable;
             input-schmitt-enable;
         };
@@ -15,4 +15,12 @@
     status = "okay";
     pinctrl-0 = <&i2c1_default>;
     pinctrl-names = "default";
+};
+
+
+&i2c1 {
+	bme680@76 {
+		compatible = "bosch,bme680";
+		reg = <0x76>;
+	};
 };

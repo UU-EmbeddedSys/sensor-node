@@ -11,7 +11,7 @@
             "request": "attach",
             "type": "cortex-debug",
             "servertype": "external", 
-            "gdbPath": "arm-none-eabi-gdb", 
+            "gdbPath": "gdb-multiarch", 
             "gdbTarget": "localhost:3333"
         }
     ]

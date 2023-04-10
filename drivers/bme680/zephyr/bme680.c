@@ -2,6 +2,8 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+
 
 LOG_MODULE_REGISTER(bme680);
 
@@ -22,7 +24,41 @@ const float const_array2[] = {8000000.0f, 4000000.0f, 2000000.0f, 1000000.0f, 49
 
 static float calc_temperature(uint32_t temp_adc);
 
-static int set_forced_mode(const struct device *i2c_dev);
+static int set_forced_mode(bme680_dev_t* bme680_device);
+
+void bme680_dev_t_init(bme680_dev_t* bme680_device)
+{
+	if (bme680_device == NULL) {
+		LOG_INF("Failed to allocate memory for bme680_device\n");
+		return;
+	}
+	/* Initialize I2C device */
+    bme680_device->i2c_dev = DEVICE_DT_GET(DT_NODELABEL(i2c0));
+    if (!(bme680_device->i2c_dev)) {
+        LOG_INF("Failed to get I2C device\n");
+        return;
+    }
+    else{
+        LOG_INF("I2C device found\n");
+    }
+	bme680_device->forced_mode = 0x01;
+	bme680_device->temp_oversampling = (0 << 7) | (0 << 6) | (1 << 5);
+
+	// if (!device_is_ready(bme680_device->i2c_dev)) {
+	// 	LOG_INF("I2C: Device is not ready.\n");
+	// 	return NULL;
+	// }
+
+	uint32_t i2c_cfg = I2C_SPEED_SET(I2C_SPEED_STANDARD) | I2C_MODE_CONTROLLER;
+	int err = i2c_configure(bme680_device->i2c_dev, i2c_cfg);
+	if(err != 0)
+	{
+		LOG_ERR("i2c_configure\n");
+	}
+	
+
+}
+
 
 /**
  * @brief Read an internal register of the BME680 sensor
@@ -81,11 +117,11 @@ static int bme680_write_reg(const struct device *i2c_dev, uint8_t *write_buf, ui
  *
  * @param i2c_dev
  */
-void bme680_chip_id(const struct device *i2c_dev)
+void bme680_chip_id(bme680_dev_t* bme680_device)
 {
 	int err = 0;
 	uint8_t chip_id = 0;
-	err = bme680_read_reg(i2c_dev, &chip_id, 1, BME680_ID);
+	err = bme680_read_reg(bme680_device->i2c_dev, &chip_id, 1, BME680_ID);
 	if (err != 0) {
 		LOG_ERR("bme680_chip_id\n");
 	}
@@ -95,19 +131,18 @@ void bme680_chip_id(const struct device *i2c_dev)
 		LOG_ERR("Wrong chip ID");
 	}
 }
-
-bme680_temp_calib_data_t bme680_calib_data(const struct device *i2c_dev)
+bme680_temp_calib_data_t bme680_calib_data(bme680_dev_t* bme680_device)
 {
 	int err = 0;
 	uint8_t read_buf[8] = {0};
 	// par_t1
-	err = bme680_read_reg(i2c_dev, read_buf, 2, 0xE9);
+	err = bme680_read_reg(bme680_device->i2c_dev, read_buf, 2, 0xE9);
 	if (err != 0) {
 		LOG_ERR("bme680_calib_data\n");
 	}
 	calib_data.par_t1 = (read_buf[0]) | (read_buf[1] << 8);
 	// par_t2 & par_t3
-	err = bme680_read_reg(i2c_dev, read_buf, 3, 0x8A);
+	err = bme680_read_reg(bme680_device->i2c_dev, read_buf, 3, 0x8A);
 	if (err != 0) {
 		LOG_ERR("bme680_calib_data\n");
 	}
@@ -118,41 +153,43 @@ bme680_temp_calib_data_t bme680_calib_data(const struct device *i2c_dev)
 	return calib_data;
 }
 
-void bme680_soft_reset(const struct device *i2c_dev)
-{
+void bme680_soft_reset(bme680_dev_t* bme680_device){
 	int err = 0;
 	uint8_t soft_rst_cmd = 0xB6;
 
-	err = bme680_write_reg(i2c_dev, &soft_rst_cmd, 1, BME680_RESET);
+	err = bme680_write_reg(bme680_device->i2c_dev, &soft_rst_cmd, 1, BME680_RESET);
 	if (err != 0) {
 		LOG_ERR("bme680_soft_reset\n");
 	}
 }
 
-void bme680_config_init(const struct device *i2c_dev)
+void bme680_config_init(bme680_dev_t* bme680_device)
 {
+	LOG_INF("Configuring BME680");
 	int err = 0;
 	uint8_t iir_filter = 0;
 	// Set the IIR filter
-	err = bme680_write_reg(i2c_dev, &iir_filter, 1, BME680_CONFIG);
+	err = bme680_write_reg(bme680_device->i2c_dev, &iir_filter, 1, BME680_CONFIG);
 	if (err != 0) {
 		LOG_ERR("bme680_config_init\n");
 	}
-	err = set_forced_mode(i2c_dev);
+	LOG_INF("IIR filter set");
+	err = set_forced_mode(bme680_device);
 	if (err != 0) {
 		LOG_ERR("bme680_config_init\n");
 	}
+	bme680_calib_data(bme680_device);
 }
 
-void bme680_read_temperature(const struct device *i2c_dev)
+void bme680_read_temperature(bme680_dev_t* bme680_device)
 {
 	int err = 0;
-	err = set_forced_mode(i2c_dev);
+	err = set_forced_mode(bme680_device);
 	if (err != 0) {
 		LOG_ERR("bme680_read_temperature\n");
 	}
 	uint8_t read_buf[8] = {0};
-	err = bme680_read_reg(i2c_dev, read_buf, 3, BME680_TEMP_MSB);
+	err = bme680_read_reg(bme680_device->i2c_dev, read_buf, 3, BME680_TEMP_MSB);
 	if (err != 0) {
 		LOG_ERR("read_temp\n");
 	}
@@ -162,13 +199,11 @@ void bme680_read_temperature(const struct device *i2c_dev)
 	printf("Temp: %f\n", calc_temperature(raw_temp));
 }
 
-static int set_forced_mode(const struct device *i2c_dev)
+static int set_forced_mode(bme680_dev_t* bme680_device)
 {
 	int err = 0;
-	uint8_t temp_oversampling = (0 << 7) | (0 << 6) | (1 << 5);
-	uint8_t forced_mode = 0x01;
-	uint8_t byte = temp_oversampling | forced_mode;
-	err = bme680_write_reg(i2c_dev, &byte, 1, BME680_CTRL_MEAS);
+	uint8_t byte = bme680_device->temp_oversampling | bme680_device->forced_mode;
+	err = bme680_write_reg(bme680_device->i2c_dev, &byte, 1, BME680_CTRL_MEAS);
 	return err;
 }
 

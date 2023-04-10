@@ -5,10 +5,27 @@
 
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/kernel.h>
+
 
 #include <stdint.h>
 
 #define BME680_ADDR 0x77
+// FIXME
+enum Oversampling {
+    NO_OVERSAMPLING = 1,
+    OVERSAMPLING_2X = 2,
+    OVERSAMPLING_4X = 4,
+    OVERSAMPLING_8X = 8,
+    OVERSAMPLING_16X = 16,
+};
+
+typedef struct bme680_dev_t{
+	const struct device *i2c_dev;
+	uint8_t temp_oversampling;
+	uint8_t forced_mode;
+} bme680_dev_t;
+
 
 typedef struct bme680_temp_calib_data_t {
 	/*! Variable to store calibrated temperature data */
@@ -65,15 +82,18 @@ typedef struct bme680_calib_data_t {
     bme680_gas_calib_data_t gas;
 } bme680_calib_data_t;
 
-void bme680_soft_reset(const struct device *i2c_dev);
 
-void bme680_chip_id(const struct device *i2c_dev);
+void bme680_dev_t_init(bme680_dev_t* bme680_device);
+
+void bme680_soft_reset(bme680_dev_t* bme680_device);
+
+void bme680_chip_id(bme680_dev_t* bme680_device);
 
 // TODO modify for getting ALL the parameters
-bme680_temp_calib_data_t bme680_calib_data(const struct device *i2c_dev);
+bme680_temp_calib_data_t bme680_calib_data(bme680_dev_t* bme680_device);
 
-void bme680_config_init(const struct device *i2c_dev);
+void bme680_config_init(bme680_dev_t* bme680_device);
 
-void bme680_read_temperature(const struct device *i2c_dev);
+void bme680_read_temperature(bme680_dev_t* bme680_device);
 
 #endif /* BME680_H */
