@@ -3,7 +3,8 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "${ZEPHYR_BASE}/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang",
