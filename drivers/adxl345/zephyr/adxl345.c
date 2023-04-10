@@ -1,11 +1,12 @@
 #include "adxl345.h"
 
 
-const struct device* init_adxl345(void){
-	return 0;
+void adxl345_constructor(adxl345_manager_t* adxl345_device){
+	adxl345_device->i2c_dev = device_get_binding("I2C_0");
 }
 
-int poll_adxl345(const struct device* i2c_dev)
-{
-	return ADXL345_BW_RATE;
+
+
+void adxl345_read_x_axis(adxl345_manager_t* adxl345_device){
+	
 }
