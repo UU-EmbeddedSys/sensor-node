@@ -20,11 +20,16 @@ enum Oversampling {
     OVERSAMPLING_16X = 16,
 };
 
-typedef struct bme680_dev_t{
+typedef struct bme680_manager_t{
 	const struct device *i2c_dev;
 	uint8_t temp_oversampling;
 	uint8_t forced_mode;
-} bme680_dev_t;
+
+
+	float last_temperature;
+	float last_humidity;
+	float last_pressure;
+} bme680_manager_t;
 
 
 typedef struct bme680_temp_calib_data_t {
@@ -83,17 +88,17 @@ typedef struct bme680_calib_data_t {
 } bme680_calib_data_t;
 
 
-void bme680_dev_t_init(bme680_dev_t* bme680_device);
+void bme680_constructor(bme680_manager_t* bme680_device);
 
-void bme680_soft_reset(bme680_dev_t* bme680_device);
+void bme680_soft_reset(bme680_manager_t* bme680_device);
 
-void bme680_chip_id(bme680_dev_t* bme680_device);
+void bme680_chip_id(bme680_manager_t* bme680_device);
 
 // TODO modify for getting ALL the parameters
-bme680_temp_calib_data_t bme680_calib_data(bme680_dev_t* bme680_device);
+bme680_temp_calib_data_t bme680_calib_data(bme680_manager_t* bme680_device);
 
-void bme680_config_init(bme680_dev_t* bme680_device);
+void bme680_config_init(bme680_manager_t* bme680_device);
 
-void bme680_read_temperature(bme680_dev_t* bme680_device);
+void bme680_read_temperature(bme680_manager_t* bme680_device);
 
 #endif /* BME680_H */

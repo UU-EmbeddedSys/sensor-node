@@ -24,9 +24,9 @@ const float const_array2[] = {8000000.0f, 4000000.0f, 2000000.0f, 1000000.0f, 49
 
 static float calc_temperature(uint32_t temp_adc);
 
-static int set_forced_mode(bme680_dev_t* bme680_device);
+static int set_forced_mode(bme680_manager_t* bme680_device);
 
-void bme680_dev_t_init(bme680_dev_t* bme680_device)
+void bme680_constructor(bme680_manager_t* bme680_device)
 {
 	if (bme680_device == NULL) {
 		LOG_INF("Failed to allocate memory for bme680_device\n");
@@ -56,7 +56,11 @@ void bme680_dev_t_init(bme680_dev_t* bme680_device)
 		LOG_ERR("i2c_configure\n");
 	}
 	
+	bme680_config_init(bme680_device);
 
+	bme680_device->last_humidity = -1;
+	bme680_device->last_pressure = -1;
+	bme680_device->last_temperature = -1;
 }
 
 
@@ -117,7 +121,7 @@ static int bme680_write_reg(const struct device *i2c_dev, uint8_t *write_buf, ui
  *
  * @param i2c_dev
  */
-void bme680_chip_id(bme680_dev_t* bme680_device)
+void bme680_chip_id(bme680_manager_t* bme680_device)
 {
 	int err = 0;
 	uint8_t chip_id = 0;
@@ -131,7 +135,7 @@ void bme680_chip_id(bme680_dev_t* bme680_device)
 		LOG_ERR("Wrong chip ID");
 	}
 }
-bme680_temp_calib_data_t bme680_calib_data(bme680_dev_t* bme680_device)
+bme680_temp_calib_data_t bme680_calib_data(bme680_manager_t* bme680_device)
 {
 	int err = 0;
 	uint8_t read_buf[8] = {0};
@@ -153,7 +157,7 @@ bme680_temp_calib_data_t bme680_calib_data(bme680_dev_t* bme680_device)
 	return calib_data;
 }
 
-void bme680_soft_reset(bme680_dev_t* bme680_device){
+void bme680_soft_reset(bme680_manager_t* bme680_device){
 	int err = 0;
 	uint8_t soft_rst_cmd = 0xB6;
 
@@ -163,7 +167,7 @@ void bme680_soft_reset(bme680_dev_t* bme680_device){
 	}
 }
 
-void bme680_config_init(bme680_dev_t* bme680_device)
+void bme680_config_init(bme680_manager_t* bme680_device)
 {
 	LOG_INF("Configuring BME680");
 	int err = 0;
@@ -181,7 +185,7 @@ void bme680_config_init(bme680_dev_t* bme680_device)
 	bme680_calib_data(bme680_device);
 }
 
-void bme680_read_temperature(bme680_dev_t* bme680_device)
+void bme680_read_temperature(bme680_manager_t* bme680_device)
 {
 	int err = 0;
 	err = set_forced_mode(bme680_device);
@@ -194,12 +198,12 @@ void bme680_read_temperature(bme680_dev_t* bme680_device)
 		LOG_ERR("read_temp\n");
 	}
 	uint32_t raw_temp = (read_buf[0] << 12) | (read_buf[1] << 4) | (read_buf[2] >> 4);
-	printf("RAW: %d - %02x %02x %02x\n", raw_temp, read_buf[0], read_buf[1], read_buf[2]);
+	//printf("RAW: %d - %02x %02x %02x\n", raw_temp, read_buf[0], read_buf[1], read_buf[2]);
 	// hexdump(read_buf, 8);
-	printf("Temp: %f\n", calc_temperature(raw_temp));
+	bme680_device->last_temperature = calc_temperature(raw_temp);
 }
 
-static int set_forced_mode(bme680_dev_t* bme680_device)
+static int set_forced_mode(bme680_manager_t* bme680_device)
 {
 	int err = 0;
 	uint8_t byte = bme680_device->temp_oversampling | bme680_device->forced_mode;
