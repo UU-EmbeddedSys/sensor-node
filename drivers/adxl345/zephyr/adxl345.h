@@ -12,6 +12,8 @@ typedef struct adxl345_manager_t{
 	
 } adxl345_manager_t;
 
+#define ADXL345_ADDR 0x77
+
 void adxl345_constructor(adxl345_manager_t* adxl345_device);
 
 
