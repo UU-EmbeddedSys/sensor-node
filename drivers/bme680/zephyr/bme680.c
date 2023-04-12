@@ -26,43 +26,6 @@ static float calc_temperature(uint32_t temp_adc);
 
 static int set_forced_mode(bme680_manager_t* bme680_device);
 
-void bme680_constructor(bme680_manager_t* bme680_device)
-{
-	if (bme680_device == NULL) {
-		LOG_INF("Failed to allocate memory for bme680_device\n");
-		return;
-	}
-	/* Initialize I2C device */
-    bme680_device->i2c_dev = DEVICE_DT_GET(DT_NODELABEL(i2c0));
-    if (!(bme680_device->i2c_dev)) {
-        LOG_INF("Failed to get I2C device\n");
-        return;
-    }
-    else{
-        LOG_INF("I2C device found\n");
-    }
-	bme680_device->forced_mode = 0x01;
-	bme680_device->temp_oversampling = (0 << 7) | (0 << 6) | (1 << 5);
-
-	// if (!device_is_ready(bme680_device->i2c_dev)) {
-	// 	LOG_INF("I2C: Device is not ready.\n");
-	// 	return NULL;
-	// }
-
-	uint32_t i2c_cfg = I2C_SPEED_SET(I2C_SPEED_STANDARD) | I2C_MODE_CONTROLLER;
-	int err = i2c_configure(bme680_device->i2c_dev, i2c_cfg);
-	if(err != 0)
-	{
-		LOG_ERR("i2c_configure\n");
-	}
-	
-	bme680_config_init(bme680_device);
-
-	bme680_device->last_humidity = -1;
-	bme680_device->last_pressure = -1;
-	bme680_device->last_temperature = -1;
-}
-
 
 /**
  * @brief Read an internal register of the BME680 sensor
@@ -116,6 +79,44 @@ static int bme680_write_reg(const struct device *i2c_dev, uint8_t *write_buf, ui
 	return err;
 }
 
+void bme680_constructor(bme680_manager_t* bme680_device)
+{
+	if (bme680_device == NULL) {
+		LOG_INF("Failed to allocate memory for bme680_device\n");
+		return;
+	}
+	/* Initialize I2C device */
+    bme680_device->i2c_dev = DEVICE_DT_GET(DT_NODELABEL(i2c0));
+    if (!(bme680_device->i2c_dev)) {
+        LOG_INF("Failed to get I2C device\n");
+        return;
+    }
+    else{
+        LOG_INF("I2C device found\n");
+    }
+	bme680_device->forced_mode = 0x01;
+	bme680_device->temp_oversampling = (0 << 7) | (0 << 6) | (1 << 5);
+
+	// if (!device_is_ready(bme680_device->i2c_dev)) {
+	// 	LOG_INF("I2C: Device is not ready.\n");
+	// 	return NULL;
+	// }
+
+	uint32_t i2c_cfg = I2C_SPEED_SET(I2C_SPEED_STANDARD) | I2C_MODE_CONTROLLER;
+	int err = i2c_configure(bme680_device->i2c_dev, i2c_cfg);
+	if(err != 0)
+	{
+		LOG_ERR("i2c_configure\n");
+	}
+	
+	bme680_config_init(bme680_device);
+
+	bme680_device->last_humidity = -1;
+	bme680_device->last_pressure = -1;
+	bme680_device->last_temperature = -1;
+}
+
+
 /**
  * @brief Read the chip ID to verify the communication with the device
  *
@@ -129,12 +130,13 @@ void bme680_chip_id(bme680_manager_t* bme680_device)
 	if (err != 0) {
 		LOG_ERR("bme680_chip_id\n");
 	}
-	printf("Chip ID 0x%02x\n", chip_id);
+	LOG_INF("Chip ID 0x%02x\n", chip_id);
 	if (chip_id != 0x61) // reset state of a read only register
 	{
 		LOG_ERR("Wrong chip ID");
 	}
 }
+
 bme680_temp_calib_data_t bme680_calib_data(bme680_manager_t* bme680_device)
 {
 	int err = 0;
