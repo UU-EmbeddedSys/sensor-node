@@ -78,16 +78,16 @@ void main(void)
                                  K_THREAD_STACK_SIZEOF(i2c_stack),
                                  i2c_communication,
                                  NULL, NULL, NULL,
-                                 4, 0, K_FOREVER);
+                                 MY_PRIORITY, K_INHERIT_PERMS, K_FOREVER);
 	k_tid_t polling_thread_tid = k_thread_create(&polling_thread, sensor_polling_stack,
                                  K_THREAD_STACK_SIZEOF(sensor_polling_stack),
                                  sensor_polling,
                                  NULL, NULL, NULL,
-                                 MY_PRIORITY, 0, K_FOREVER);
+                                 MY_PRIORITY, K_INHERIT_PERMS, K_FOREVER);
 	
 
-	k_thread_cpu_pin( polling_thread_tid, 0  );
-	k_thread_cpu_pin( i2c_thread_tid    , 1 );
+	k_thread_cpu_pin( &polling_thread_tid, 0  );
+	k_thread_cpu_pin( &i2c_thread_tid    , 1 );
 
 	k_thread_start( i2c_thread_tid );
 	k_thread_start( polling_thread_tid );
