@@ -201,6 +201,7 @@ void bme680_read_temperature(bme680_manager_t* bme680_device)
 	//printf("RAW: %d - %02x %02x %02x\n", raw_temp, read_buf[0], read_buf[1], read_buf[2]);
 	// hexdump(read_buf, 8);
 	bme680_device->last_temperature = calc_temperature(raw_temp);
+	
 }
 
 static int set_forced_mode(bme680_manager_t* bme680_device)
