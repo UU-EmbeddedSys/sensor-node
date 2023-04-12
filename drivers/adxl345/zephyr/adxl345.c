@@ -3,6 +3,7 @@
 
 void adxl345_constructor(adxl345_manager_t* adxl345_device){
 	adxl345_device->i2c_dev = device_get_binding("I2C_0");
+	
 }
 
 
