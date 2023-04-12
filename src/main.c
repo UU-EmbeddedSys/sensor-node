@@ -3,11 +3,16 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/devicetree.h>
+#include <zephyr/drivers/gpio.h>
+
 
 #include "bme680.h"
 #include "adxl345.h"
 #include "sample.h"
-#include <zephyr/log_ctrl.h>
+
+
+#define LED0_NODE       DT_ALIAS(led0) 
+#define LED1_NODE       DT_ALIAS(led1) 
 
 
 #define MY_STACK_SIZE 5000
@@ -24,6 +29,10 @@ K_THREAD_STACK_DEFINE(sensor_polling_stack, MY_STACK_SIZE);
 
 struct k_thread polling_thread, i2c_thread;
 
+struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(LED1_NODE, gpios);
+
+
 typedef struct sensor_tree_t{
 	bme680_manager_t bme680_device;
 	adxl345_manager_t adxl345_device;
@@ -32,26 +41,19 @@ typedef struct sensor_tree_t{
 sensor_tree_t sensor_tree;
 
 
-void sensor_polling_fake(void* p1, void* p2, void* p3){
-	while (true) {
-		LOG_INF("Hello World from the app!\n");
-
-		LOG_INF("JELLOW, MAI NEIM IS RODRIGO, AND AI AM BERI STIUPID :D\n");
-
-		k_sleep(K_MSEC(1000));
-	}
-}
-
-
 void sensor_polling(void* p1, void* p2, void* p3){
-	log_thread_set(k_current_get());
+	gpio_pin_configure_dt(&led0, GPIO_OUTPUT_INACTIVE); 
+
+
 	bme680_constructor(&(sensor_tree.bme680_device));
 	
 	
 	while (true) {
 		k_sleep(K_MSEC(REFRESH_TIME));
 		bme680_read_temperature(&(sensor_tree.bme680_device));
+		
 		LOG_INF("I'm doing something\n");
+		gpio_pin_toggle_dt(&led0); 
 	}
 
 
@@ -59,10 +61,13 @@ void sensor_polling(void* p1, void* p2, void* p3){
 
 
 void i2c_communication(void *p1, void *p2, void *p3){
-	log_thread_set(k_current_get());
+	gpio_pin_configure_dt(&led1, GPIO_OUTPUT_INACTIVE); 
+
+
 	LOG_INF("I2C thread started\n");
 	while(true){
 		LOG_INF("Temperature: %f\n", sensor_tree.bme680_device.last_temperature); //TODO add mutex
+		gpio_pin_toggle_dt(&led1);
 		k_sleep(K_MSEC(1000));
 	}
 }
@@ -81,7 +86,7 @@ void main(void)
                                  MY_PRIORITY, 0, K_FOREVER);
 	
 
-	k_thread_cpu_pin( polling_thread_tid, 0 );
+	k_thread_cpu_pin( polling_thread_tid, 0  );
 	k_thread_cpu_pin( i2c_thread_tid    , 1 );
 
 	k_thread_start( i2c_thread_tid );
