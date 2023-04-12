@@ -53,7 +53,7 @@ void i2c_communication(void *p1, void *p2, void *p3)
 {
 	gpio_pin_configure_dt(&led1, GPIO_OUTPUT_INACTIVE);
 
-	LOG_INF("I2C thread started\n");
+	LOG_INF("I2C thread development\n");
 	while (true) {
 		LOG_INF("Temperature: %f\n",
 			sensor_tree.bme680_device.last_temperature); // TODO add mutex
