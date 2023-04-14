@@ -7,6 +7,7 @@
 
 #include "bme680.h"
 #include "adxl345.h"
+#include "ultrasonic.h"
 #include "sample.h"
 
 #define LED0_NODE DT_ALIAS(led0)
@@ -30,6 +31,7 @@ struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(LED1_NODE, gpios);
 typedef struct sensor_tree_t {
 	bme680_manager_t bme680_device;
 	adxl345_manager_t adxl345_device;
+	ultrasonic_manager_t ultrasonic_device;
 } sensor_tree_t;
 
 sensor_tree_t sensor_tree;
@@ -38,13 +40,14 @@ void sensor_polling(void *p1, void *p2, void *p3)
 {
 	gpio_pin_configure_dt(&led0, GPIO_OUTPUT_INACTIVE);
 
-	bme680_constructor(&(sensor_tree.bme680_device));
-
+	//bme680_constructor(&(sensor_tree.bme680_device));
+	ultrasonic_constructor(&(sensor_tree.ultrasonic_device));
+	ultrasonic_read_distance(&(sensor_tree.ultrasonic_device));
 	while (true) {
 		k_sleep(K_MSEC(REFRESH_TIME));
-		bme680_read_temperature(&(sensor_tree.bme680_device));
+		//bme680_read_temperature(&(sensor_tree.bme680_device));
 
-		LOG_INF("I'm doing something\n");
+		//LOG_INF("I'm doing something\n");
 		gpio_pin_toggle_dt(&led0);
 	}
 }

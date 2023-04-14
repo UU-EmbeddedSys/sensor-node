@@ -26,6 +26,8 @@
     aliases {
                led0 = &myled0;
                led1 = &myled1;
+               
+               us0 = &us0;
     };
 
     leds {
@@ -37,9 +39,16 @@
                     gpios = <&gpio0 16 GPIO_ACTIVE_HIGH>;
             };
     };
+    
+    sensors {
+        us0: ultrasonic_0 {
+            gpio_signal = <&gpio0 7 GPIO_ACTIVE_HIGH>; // sig
+            status = "okay";
+        };
+    };
 };
 
-
+// TODO add pin to connect master through i2c 1
 &pinctrl {
     i2c1_default: i2c1_default {
         group1 {
