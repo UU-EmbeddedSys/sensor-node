@@ -25,6 +25,8 @@ K_THREAD_STACK_DEFINE(sensor_polling_stack, MY_STACK_SIZE);
 
 struct k_thread polling_thread, i2c_thread;
 
+
+
 struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(LED1_NODE, gpios);
 
@@ -40,14 +42,14 @@ void sensor_polling(void *p1, void *p2, void *p3)
 {
 	gpio_pin_configure_dt(&led0, GPIO_OUTPUT_INACTIVE);
 
-	//bme680_constructor(&(sensor_tree.bme680_device));
+	// bme680_constructor(&(sensor_tree.bme680_device));
 	ultrasonic_constructor(&(sensor_tree.ultrasonic_device));
 	ultrasonic_read_distance(&(sensor_tree.ultrasonic_device));
 	while (true) {
 		k_sleep(K_MSEC(REFRESH_TIME));
-		//bme680_read_temperature(&(sensor_tree.bme680_device));
+		// bme680_read_temperature(&(sensor_tree.bme680_device));
 
-		//LOG_INF("I'm doing something\n");
+		// LOG_INF("I'm doing something\n");
 		gpio_pin_toggle_dt(&led0);
 	}
 }

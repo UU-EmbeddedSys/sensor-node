@@ -27,7 +27,7 @@
                led0 = &myled0;
                led1 = &myled1;
                
-               us0 = &us0;
+                // us0 = &myus;
     };
 
     leds {
@@ -39,10 +39,12 @@
                     gpios = <&gpio0 16 GPIO_ACTIVE_HIGH>;
             };
     };
+
     
     sensors {
-        us0: ultrasonic_0 {
-            gpio_signal = <&gpio0 7 GPIO_ACTIVE_HIGH>; // sig
+        compatible = "gpio-keys";
+        my_us: us0 {
+            gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>; // sig
             status = "okay";
         };
     };

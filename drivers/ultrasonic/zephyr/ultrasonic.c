@@ -4,8 +4,11 @@
 #include <string.h>
 #include <stdlib.h>
 
+// #include <zephyr/drivers/gpio.h>
 
 LOG_MODULE_REGISTER(ultrasonic);
+
+const struct gpio_dt_spec us0 = GPIO_DT_SPEC_GET(DT_NODELABEL(my_us), gpios);
 
 // static uint32_t MicrosDiff(uint32_t begin, uint32_t end) {
 //     return end - begin;
@@ -96,7 +99,7 @@ void ultrasonic_constructor(ultrasonic_manager_t* ultrasonic_device){
 	gpio_add_callback(button.port, &button_cb_data);
 	printk("Set up button at %s pin %d\n", button.port->name, button.pin);*/
     int err;
-	ultrasonic_device->signal = GPIO_DT_SPEC_GET(DT_PATH(sensors, us0), gpio_signal);
+	ultrasonic_device->signal = &us0; // GPIO_DT_SPEC_GET(DT_NODELABEL(my_us), gpios);
 	
 
     if(ultrasonic_device->signal == NULL)
@@ -104,7 +107,7 @@ void ultrasonic_constructor(ultrasonic_manager_t* ultrasonic_device){
         LOG_ERR("Failed to get the device from DTS");
     }
 
-	//err = gpio_pin_interrupt_configure_dt(ultrasonic_device->signal, GPIO_INT_EDGE_BOTH);
+	err = gpio_pin_interrupt_configure_dt(ultrasonic_device->signal, GPIO_INT_EDGE_BOTH);
 	if (err != 0) {
 		LOG_ERR("Error %d: failed to configure interrupt on pin %u\n",
 			 err, ultrasonic_device->signal->pin);
