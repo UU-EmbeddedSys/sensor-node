@@ -49,7 +49,7 @@ void sensor_polling(void *p1, void *p2, void *p3)
 		// bme680_read_temperature(&(sensor_tree.bme680_device));
 
 		uint32_t aaa = ultrasonic_measure_in_centimeters(&(sensor_tree.ultrasonic_device));
-		LOG_INF("Distance: %d", aaa);
+		//LOG_INF("Distance: %d", aaa);
 
 		// LOG_INF("I'm doing something\n");
 		gpio_pin_toggle_dt(&led0);
