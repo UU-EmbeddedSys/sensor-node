@@ -49,17 +49,71 @@ void sensor_polling(void *p1, void *p2, void *p3)
 	}
 }
 
+
+// typedef int (*i2c_target_write_requested_cb_t)(struct i2c_target_config *config);
+int our_i2c_write_requested(struct i2c_target_config *config){
+	printf("Write requested\n");
+	return -1;
+}
+// typedef int (*i2c_target_read_requested_cb_t)(struct i2c_target_config *config, uint8_t *val);
+int our_i2c_read_requested(struct i2c_target_config *config, uint8_t *val){
+	printf("Read requested\n");
+	return 0;
+}
+
+// typedef int (*i2c_target_write_received_cb_t)( struct i2c_target_config *config, uint8_t val);
+int our_i2c_write_received(struct i2c_target_config *config, uint8_t val){
+	printf("Write received\n");
+	return 0;
+}
+
+// typedef int (*i2c_target_read_processed_cb_t)(struct i2c_target_config *config, uint8_t *val);
+int our_i2c_read_processed(struct i2c_target_config *config, uint8_t *val){
+	printf("Read processed\n");
+	return 0;
+}
+// typedef int (*i2c_target_stop_cb_t)(struct i2c_target_config *config);
+int our_i2c_stop(struct i2c_target_config *config){
+	printf("Stop\n");
+	return 0;
+}
+
+
+
+/* Create a static initializer for a struct i2c_dt_spec */
+
+static struct i2c_target_callbacks sn_i2c_cbs = {
+		.write_requested = our_i2c_write_requested ,  // typedef int (*i2c_target_write_requested_cb_t)(struct i2c_target_config *config);
+		.read_requested = our_i2c_read_requested,   // typedef int (*i2c_target_read_requested_cb_t)(struct i2c_target_config *config, uint8_t *val);
+		.write_received = our_i2c_write_received,   // typedef int (*i2c_target_write_received_cb_t)( struct i2c_target_config *config, uint8_t val);
+		.read_processed = our_i2c_read_processed,   // typedef int (*i2c_target_read_processed_cb_t)(struct i2c_target_config *config, uint8_t *val);
+		.stop = our_i2c_stop // typedef int (*i2c_target_stop_cb_t)(struct i2c_target_config *config);
+};
+
+
+/* Create a static initializer for a struct i2c_target_config */
+static struct i2c_target_config i2c_cfg = {
+    .address = 0x40, /* The target address on the bus */
+    .flags = 0, /* No flags */
+	.callbacks = &sn_i2c_cbs
+};
+
+const struct device* i2c_dev = DEVICE_DT_GET(DT_NODELABEL(i2c1));
+
+
 void i2c_communication(void *p1, void *p2, void *p3)
 {
-	gpio_pin_configure_dt(&led1, GPIO_OUTPUT_INACTIVE);
 
-	LOG_INF("I2C thread development\n");
-	while (true) {
-		LOG_INF("Temperature: %f\n",
-			sensor_tree.bme680_device.last_temperature); // TODO add mutex
-		gpio_pin_toggle_dt(&led1);
-		k_sleep(K_MSEC(1000));
+	/* Enable I2C target mode for the bus driver */
+    int ret = i2c_target_register (i2c_dev, &i2c_cfg);
+    if (ret < 0) {
+        printk("Failed to enable I2C target mode: %d\n", ret);
+        return;
+    }
+	while(true){
+		k_sleep(K_MSEC(REFRESH_TIME));
 	}
+
 }
 
 void main(void)
@@ -75,5 +129,5 @@ void main(void)
 	k_thread_cpu_pin(&i2c_thread_tid, 1);
 
 	k_thread_start(i2c_thread_tid);
-	k_thread_start(polling_thread_tid);
+	//k_thread_start(polling_thread_tid);
 }
