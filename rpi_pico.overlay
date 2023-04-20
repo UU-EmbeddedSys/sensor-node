@@ -27,7 +27,6 @@
                led0 = &myled0;
                led1 = &myled1;
                
-                // us0 = &myus;
     };
 
     leds {
@@ -42,7 +41,7 @@
 
     
     sensors {
-        compatible = "gpio-keys";
+        compatible = "gpio-leds";
         my_us: us0 {
             gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>; // sig
             status = "okay";

@@ -43,11 +43,13 @@ void sensor_polling(void *p1, void *p2, void *p3)
 	gpio_pin_configure_dt(&led0, GPIO_OUTPUT_INACTIVE);
 
 	// bme680_constructor(&(sensor_tree.bme680_device));
-	ultrasonic_constructor(&(sensor_tree.ultrasonic_device));
-	ultrasonic_read_distance(&(sensor_tree.ultrasonic_device));
+	ultrasonic_init(&(sensor_tree.ultrasonic_device));
 	while (true) {
 		k_sleep(K_MSEC(REFRESH_TIME));
 		// bme680_read_temperature(&(sensor_tree.bme680_device));
+
+		uint32_t aaa = ultrasonic_measure_in_centimeters(&(sensor_tree.ultrasonic_device));
+		LOG_INF("Distance: %d", aaa);
 
 		// LOG_INF("I'm doing something\n");
 		gpio_pin_toggle_dt(&led0);
@@ -79,6 +81,6 @@ void main(void)
 	k_thread_cpu_pin(&polling_thread_tid, 0);
 	k_thread_cpu_pin(&i2c_thread_tid, 1);
 
-	k_thread_start(i2c_thread_tid);
+	//k_thread_start(i2c_thread_tid);
 	k_thread_start(polling_thread_tid);
 }
