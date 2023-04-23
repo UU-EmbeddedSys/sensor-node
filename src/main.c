@@ -98,7 +98,7 @@ static struct i2c_target_config i2c_cfg = {
 	.callbacks = &sn_i2c_cbs
 };
 
-const struct device* i2c_dev = DEVICE_DT_GET(DT_NODELABEL(i2c1));
+const struct device* i2c_dev = DEVICE_DT_GET(DT_NODELABEL(i2c0));
 uint32_t i2c_speed_cfg = I2C_SPEED_SET(I2C_SPEED_STANDARD);
 
 
@@ -129,7 +129,7 @@ void i2c_communication_target(void *p1, void *p2, void *p3)
 	}
 }
 
-const struct device *const i2c_dev_source = DEVICE_DT_GET(DT_NODELABEL(i2c0));
+const struct device *const i2c_dev_source = DEVICE_DT_GET(DT_NODELABEL(i2c1));
 uint32_t i2c_cfg_source = I2C_SPEED_SET(I2C_SPEED_STANDARD) | I2C_MODE_CONTROLLER;
 
 void i2c_communication_source(void *p1, void *p2, void *p3){
