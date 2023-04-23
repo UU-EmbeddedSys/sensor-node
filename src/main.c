@@ -42,7 +42,7 @@ void sensor_polling(void *p1, void *p2, void *p3)
 
 	while (true) {
 		k_sleep(K_MSEC(REFRESH_TIME));
-		bme680_read_temperature(&(sensor_tree.bme680_device));
+		bme680_read_sensors(&(sensor_tree.bme680_device));
 
 		LOG_INF("I'm doing something\n");
 		gpio_pin_toggle_dt(&led0);
@@ -55,7 +55,7 @@ void i2c_communication(void *p1, void *p2, void *p3)
 
 	LOG_INF("I2C thread started\n");
 	while (true) {
-		LOG_INF("Temperature: %f\n",
+		printf("Temperature: %f\n",
 			sensor_tree.bme680_device.last_temperature); // TODO add mutex
 		gpio_pin_toggle_dt(&led1);
 		k_sleep(K_MSEC(1000));

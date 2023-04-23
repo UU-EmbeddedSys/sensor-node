@@ -65,25 +65,25 @@
 #define BME680_PAR_T3	  0x8C
 
 // Parameters for the pressure sensor
-#define BMP280_PAR_P1_LSB     0x8E
-#define BMP280_PAR_P1_MSB     0x8F
-#define BMP280_PAR_P2_LSB     0x90
-#define BMP280_PAR_P2_MSB     0x91
-#define BMP280_PAR_P3	      0x92
-#define BMP280_PAR_P4_LSB     0x94
-#define BMP280_PAR_P4_MSB     0x95
-#define BMP280_PAR_P5_LSB     0x96
-#define BMP280_PAR_P5_MSB     0x97
-#define BMP280_PAR_P6	      0x99
-#define BMP280_PAR_P7	      0x98
-#define BMP280_PAR_P8_LSB     0x9C
-#define BMP280_PAR_P8_MSB     0x9D
-#define BMP280_PAR_P9_LSB     0x9E
-#define BMP280_PAR_P9_MSB     0x9F
-#define BMP280_PAR_P10	      0xA0
-#define BMP280_PRESS_ADC_XLSB 0x1F
-#define BMP280_PRESS_ADC_LSB  0x20
-#define BMP280_PRESS_ADC_MSB  0x21
+#define BME680_PAR_P1_LSB     0x8E
+#define BME680_PAR_P1_MSB     0x8F
+#define BME680_PAR_P2_LSB     0x90
+#define BME680_PAR_P2_MSB     0x91
+#define BME680_PAR_P3	      0x92
+#define BME680_PAR_P4_LSB     0x94
+#define BME680_PAR_P4_MSB     0x95
+#define BME680_PAR_P5_LSB     0x96
+#define BME680_PAR_P5_MSB     0x97
+#define BME680_PAR_P6	      0x99
+#define BME680_PAR_P7	      0x98
+#define BME680_PAR_P8_LSB     0x9C
+#define BME680_PAR_P8_MSB     0x9D
+#define BME680_PAR_P9_LSB     0x9E
+#define BME680_PAR_P9_MSB     0x9F
+#define BME680_PAR_P10	      0xA0
+#define BME680_PRESS_ADC_XLSB 0x21
+#define BME680_PRESS_ADC_LSB  0x20
+#define BME680_PRESS_ADC_MSB  0x1F
 
 // Parameters for the Humidity sensor
 #define BME680_PAR_H1_LSB  0xE2
