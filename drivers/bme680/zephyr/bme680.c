@@ -4,7 +4,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-
 LOG_MODULE_REGISTER(bme680);
 
 /** Master -> write -> Slave
@@ -19,35 +18,46 @@ static bme680_temp_calib_data_t calib_data_temperature = {};
 static bme680_humidity_calib_data_t calib_data_humidity = {};
 static bme680_pressure_calib_data_t calib_data_pressure = {};
 
+const int32_t const_array1_int[] = {2147483647, 2147483647, 2147483647, 2147483647,
+				    2147483647, 2126008810, 2147483647, 2130303777,
+				    2147483647, 2147483647, 2143188679, 2136746228,
+				    2147483647, 2126008810, 2147483647, 2147483647};
+const int32_t const_array2_int[] = {
+	4096000000, 2048000000, 1024000000, 512000000, 255744255, 127110228, 64000000, 32258064,
+	16016016,   8000000,	4000000,    2000000,   1000000,	  500000,    250000,   125000};
+const float const_array1[] = {1.0f, 1.0f, 1.0f,	  1.0f,	  1.0f, 0.99f, 1.0f, 0.992f,
+			      1.0f, 1.0f, 0.998f, 0.995f, 1.0f, 0.99f, 1.0f, 1.0f};
+const float const_array2[] = {8000000.0f,   4000000.0f,	  2000000.0f, 1000000.0f,
+			      499500.4995f, 248262.1648f, 125000.0f,  63004.03226f,
+			      31281.28128f, 15625.0f,	  7812.5f,    3906.25f,
+			      1953.125f,    976.5625f,	  488.28125f, 244.140625f};
 
-const int32_t const_array1_int[] = {2147483647, 2147483647, 2147483647, 2147483647, 2147483647, 2126008810, 2147483647, 2130303777, 2147483647, 2147483647, 2143188679, 2136746228, 2147483647, 2126008810, 2147483647, 2147483647};
-const int32_t const_array2_int[] = {4096000000, 2048000000, 1024000000, 512000000, 255744255, 127110228, 64000000, 32258064, 16016016, 8000000, 4000000, 2000000, 1000000, 500000, 250000, 125000};
-const float const_array1[] = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.99f, 1.0f, 0.992f, 1.0f, 1.0f, 0.998f, 0.995f, 1.0f, 0.99f, 1.0f, 1.0f};
-const float const_array2[] = {8000000.0f, 4000000.0f, 2000000.0f, 1000000.0f, 499500.4995f, 248262.1648f, 125000.0f, 63004.03226f, 31281.28128f, 15625.0f, 7812.5f, 3906.25f, 1953.125f, 976.5625f, 488.28125f, 244.140625f};
+static int set_forced_mode(bme680_manager_t *bme680_device);
 
 static float calc_temperature(uint32_t temp_adc);
 static float calc_pressure(uint32_t press_adc);
 static float calc_humidity(uint32_t press_adc, uint32_t last_temperature);
 
-static int set_forced_mode(bme680_manager_t* bme680_device);
+static int bme680_read_temperature(bme680_manager_t *bme680_device);
+static int bme680_read_pressure(bme680_manager_t *bme680_device);
+static int bme680_read_humidity(bme680_manager_t *bme680_device);
 
-void bme680_constructor(bme680_manager_t* bme680_device)
+void bme680_constructor(bme680_manager_t *bme680_device)
 {
 	if (bme680_device == NULL) {
 		LOG_INF("Failed to allocate memory for bme680_device\n");
 		return;
 	}
 	/* Initialize I2C device */
-    bme680_device->i2c_dev = DEVICE_DT_GET(DT_NODELABEL(i2c0));
-    if (!(bme680_device->i2c_dev)) {
-        LOG_INF("Failed to get I2C device\n");
-        return;
-    }
-    else{
-        LOG_INF("I2C device found\n");
-    }
+	bme680_device->i2c_dev = DEVICE_DT_GET(DT_NODELABEL(i2c0));
+	if (!(bme680_device->i2c_dev)) {
+		LOG_INF("Failed to get I2C device\n");
+		return;
+	} else {
+		LOG_INF("I2C device found\n");
+	}
 	bme680_device->forced_mode = 0x01;
-	bme680_device->temp_oversampling = X1 << TEMP_SHIFT;//(0 << 7) | (0 << 6) | (1 << 5);
+	bme680_device->temp_oversampling = X1 << TEMP_SHIFT; //(0 << 7) | (0 << 6) | (1 << 5);
 
 	// if (!device_is_ready(bme680_device->i2c_dev)) {
 	// 	LOG_INF("I2C: Device is not ready.\n");
@@ -56,18 +66,16 @@ void bme680_constructor(bme680_manager_t* bme680_device)
 
 	uint32_t i2c_cfg = I2C_SPEED_SET(I2C_SPEED_STANDARD) | I2C_MODE_CONTROLLER;
 	int err = i2c_configure(bme680_device->i2c_dev, i2c_cfg);
-	if(err != 0)
-	{
+	if (err != 0) {
 		LOG_ERR("i2c_configure\n");
 	}
-	
+
 	bme680_config_init(bme680_device);
 
 	bme680_device->last_humidity = -1;
 	bme680_device->last_pressure = -1;
 	bme680_device->last_temperature = -1;
 }
-
 
 /**
  * @brief Read an internal register of the BME680 sensor
@@ -79,7 +87,7 @@ void bme680_constructor(bme680_manager_t* bme680_device)
  * @return int
  */
 static int bme680_read_reg(const struct device *i2c_dev, uint8_t *read_buf, uint8_t num_bytes,
-			       uint8_t start_address)
+			   uint8_t start_address)
 {
 	int err = 0;
 	struct i2c_msg msg[2];
@@ -105,7 +113,7 @@ static int bme680_read_reg(const struct device *i2c_dev, uint8_t *read_buf, uint
  * @return int
  */
 static int bme680_write_reg(const struct device *i2c_dev, uint8_t *write_buf, uint8_t num_bytes,
-				uint8_t start_address)
+			    uint8_t start_address)
 {
 	int err = 0;
 	struct i2c_msg msg[2];
@@ -126,7 +134,7 @@ static int bme680_write_reg(const struct device *i2c_dev, uint8_t *write_buf, ui
  *
  * @param i2c_dev
  */
-void bme680_chip_id(bme680_manager_t* bme680_device)
+void bme680_chip_id(bme680_manager_t *bme680_device)
 {
 	int err = 0;
 	uint8_t chip_id = 0;
@@ -141,7 +149,7 @@ void bme680_chip_id(bme680_manager_t* bme680_device)
 	}
 }
 
-bme680_temp_calib_data_t bme680_calib_data_temperature(bme680_manager_t* bme680_device)
+bme680_temp_calib_data_t bme680_calib_data_temperature(bme680_manager_t *bme680_device)
 {
 	int err = 0;
 	uint8_t read_buf[8] = {0};
@@ -158,12 +166,12 @@ bme680_temp_calib_data_t bme680_calib_data_temperature(bme680_manager_t* bme680_
 	}
 	calib_data_temperature.par_t2 = (read_buf[0]) | (read_buf[1] << 8);
 	calib_data_temperature.par_t3 = (read_buf[2]);
-	printf("PARAMS: t1=0x%02x t2=0x%02x t3=0x%02x\n", calib_data_temperature.par_t1, calib_data_temperature.par_t2,
-	       calib_data_temperature.par_t3);
+	printf("PARAMS: t1=0x%02x t2=0x%02x t3=0x%02x\n", calib_data_temperature.par_t1,
+	       calib_data_temperature.par_t2, calib_data_temperature.par_t3);
 	return calib_data_temperature;
 }
 
-bme680_temp_calib_data_t bme680_calib_data_humidity(bme680_manager_t* bme680_device)
+bme680_humidity_calib_data_t bme680_calib_data_humidity(bme680_manager_t *bme680_device)
 {
 	int err = 0;
 	uint8_t read_buf[8] = {0};
@@ -172,14 +180,16 @@ bme680_temp_calib_data_t bme680_calib_data_humidity(bme680_manager_t* bme680_dev
 	if (err != 0) {
 		LOG_ERR("bme680_calib_data_temperature\n");
 	}
-	calib_data_humidity.par_h1 = (read_buf[0] & 0x0F) | (read_buf[1] >> 4); //TODO get only 3 bits
-	
+	calib_data_humidity.par_h1 =
+		(read_buf[0] & 0x0F) | (read_buf[1] >> 4); // TODO get only 3 bits
+
 	err = bme680_read_reg(bme680_device->i2c_dev, read_buf, 2, BME680_PAR_H2_MSB);
 	if (err != 0) {
 		LOG_ERR("bme680_calib_data_temperature\n");
 	}
-	calib_data_humidity.par_h2 = (read_buf[0] >> 4) | (read_buf[1] << 4 ); //TODO get only 3 bits
-	
+	calib_data_humidity.par_h2 = (read_buf[0] >> 4) | (read_buf[1] << 4); // TODO get only 3
+									      // bits
+
 	err = bme680_read_reg(bme680_device->i2c_dev, read_buf, 5, BME680_PAR_H3);
 	if (err != 0) {
 		LOG_ERR("bme680_calib_data_temperature\n");
@@ -189,18 +199,18 @@ bme680_temp_calib_data_t bme680_calib_data_humidity(bme680_manager_t* bme680_dev
 	calib_data_humidity.par_h5 = (read_buf[2]);
 	calib_data_humidity.par_h6 = (read_buf[3]);
 	calib_data_humidity.par_h7 = (read_buf[4]);
-	//uint32_t raw_temp = (read_buf[0] << 12) | (read_buf[1] << 4) | (read_buf[2] >> 4);
+	// uint32_t raw_temp = (read_buf[0] << 12) | (read_buf[1] << 4) | (read_buf[2] >> 4);
 
-	return calib_data_temperature;
+	return calib_data_humidity;
 }
 
-
-bme680_pressure_calib_data_t bme680_calib_data_pressure(bme680_manager_t* bme680_device)
+bme680_pressure_calib_data_t bme680_calib_data_pressure(bme680_manager_t *bme680_device)
 {
 	int err = 0;
 	uint8_t read_buf[16] = {0};
 	// reads all the consecutive bytes from Par P1 to Par P7
-	err = bme680_read_reg(bme680_device->i2c_dev, read_buf, (BME680_PAR_P7 - BME680_PAR_P1_LSB), BME680_PAR_P1_LSB);
+	err = bme680_read_reg(bme680_device->i2c_dev, read_buf, (BME680_PAR_P7 - BME680_PAR_P1_LSB),
+			      BME680_PAR_P1_LSB);
 	if (err != 0) {
 		LOG_ERR("bme680_calib_data_pressure p1-7\n");
 	}
@@ -214,18 +224,20 @@ bme680_pressure_calib_data_t bme680_calib_data_pressure(bme680_manager_t* bme680
 	// let's clean the memory of the buffer
 	memset(read_buf, 0, sizeof(read_buf));
 	// reads all the consecutive bytes from PAR P8 to PAR 10
-	err = bme680_read_reg(bme680_device->i2c_dev, read_buf, (BME680_PAR_P10 - BME680_PAR_P8_LSB), BME680_PAR_P8_LSB);
+	err = bme680_read_reg(bme680_device->i2c_dev, read_buf,
+			      (BME680_PAR_P10 - BME680_PAR_P8_LSB), BME680_PAR_P8_LSB);
 	if (err != 0) {
 		LOG_ERR("bme680_calib_data_pressure p8-10\n");
 	}
 	calib_data_pressure.par_p8 = (read_buf[1] << 8) | read_buf[0];
 	calib_data_pressure.par_p9 = (read_buf[3] << 8) | read_buf[2];
 	calib_data_pressure.par_p10 = read_buf[4];
-	
+
 	return calib_data_pressure;
 }
 
-void bme680_soft_reset(bme680_manager_t* bme680_device){
+void bme680_soft_reset(bme680_manager_t *bme680_device)
+{
 	int err = 0;
 	uint8_t soft_rst_cmd = 0xB6;
 
@@ -235,10 +247,11 @@ void bme680_soft_reset(bme680_manager_t* bme680_device){
 	}
 }
 
-void bme680_config_init(bme680_manager_t* bme680_device)
+void bme680_config_init(bme680_manager_t *bme680_device)
 {
 	LOG_INF("Configuring BME680");
 	int err = 0;
+	// FIXME the selection of the IIR filter should be done in the measurement
 	uint8_t iir_filter = 0;
 	// Set the IIR filter
 	err = bme680_write_reg(bme680_device->i2c_dev, &iir_filter, 1, BME680_CONFIG);
@@ -252,23 +265,15 @@ void bme680_config_init(bme680_manager_t* bme680_device)
 	}
 	bme680_calib_data_temperature(bme680_device);
 	bme680_calib_data_humidity(bme680_device);
-	
 }
 
-void bme680_read_sensors(bme680_manager_t* bme680_device)
-{
-	int err = 0;
-	err = set_forced_mode(bme680_device);
-	if (err != 0) {
-		LOG_ERR("bme680_read_temperature\n");
-	}
-	bme680_read_temperature(bme680_device);
-	
-}
-
-
-
-static int set_forced_mode(bme680_manager_t* bme680_device)
+/**
+ * @brief Set the oversampling for T, H, and P and activate forced mode
+ *
+ * @param bme680_device
+ * @return int error from i2c
+ */
+static int set_forced_mode(bme680_manager_t *bme680_device)
 {
 	int err = 0;
 	uint8_t byte = bme680_device->temp_oversampling | bme680_device->forced_mode;
@@ -294,8 +299,10 @@ static float calc_temperature(uint32_t temp_adc)
 		((float)calib_data_temperature.par_t2));
 
 	/* calculate var2 data */
-	var2 = (((((float)temp_adc / 131072.0f) - ((float)calib_data_temperature.par_t1 / 8192.0f)) *
-		 (((float)temp_adc / 131072.0f) - ((float)calib_data_temperature.par_t1 / 8192.0f))) *
+	var2 = (((((float)temp_adc / 131072.0f) -
+		  ((float)calib_data_temperature.par_t1 / 8192.0f)) *
+		 (((float)temp_adc / 131072.0f) -
+		  ((float)calib_data_temperature.par_t1 / 8192.0f))) *
 		((float)calib_data_temperature.par_t3 * 16.0f));
 
 	/* t_fine value*/
@@ -307,49 +314,60 @@ static float calc_temperature(uint32_t temp_adc)
 	return calc_temp;
 }
 
+/**
+ * @brief calc_humidity function from Bosch datasheet
+ *
+ * @param hum_adc raw humidity temperature from adc conversion
+ * @param last_temperature last read temperature
+ * @return float
+ */
 static float calc_humidity(uint32_t hum_adc, uint32_t last_temperature)
 {
 	float var1, var2, var3, var4, hum_comp;
 
-
-	var1 = hum_adc - (((double)calib_data_humidity.par_h1 * 16.0) + (((double)calib_data_humidity.par_h3 / 2.0) * last_temperature));
-	var2 = var1 * (((double)calib_data_humidity.par_h2 / 262144.0) * (1.0 + (((double)calib_data_humidity.par_h4 / 16384.0) *
-	last_temperature) + (((double)calib_data_humidity.par_h5 / 1048576.0) * last_temperature * last_temperature)));
+	var1 = hum_adc - (((double)calib_data_humidity.par_h1 * 16.0) +
+			  (((double)calib_data_humidity.par_h3 / 2.0) * last_temperature));
+	var2 = var1 * (((double)calib_data_humidity.par_h2 / 262144.0) *
+		       (1.0 + (((double)calib_data_humidity.par_h4 / 16384.0) * last_temperature) +
+			(((double)calib_data_humidity.par_h5 / 1048576.0) * last_temperature *
+			 last_temperature)));
 	var3 = (double)calib_data_humidity.par_h6 / 16384.0;
 	var4 = (double)calib_data_humidity.par_h7 / 2097152.0;
-	hum_comp = var2 + ((var3 + (var4 * last_temperature)) * var2 * var2);	
+	hum_comp = var2 + ((var3 + (var4 * last_temperature)) * var2 * var2);
 
 	return hum_comp;
 }
 
-
-static float calc_pressure (uint32_t press_adc)
+/**
+ * @brief
+ *
+ * @param press_adc
+ * @return float
+ */
+static float calc_pressure(uint32_t press_adc)
 {
-  double var1, var2, var3, press_comp;
-  var1 = ((double) calib_data_temperature.t_fine / 2.0) - 64000.0;
-  var2 = var1 * var1 * ((double) calib_data_pressure.par_p6 / 131072.0);
-  var2 = var2 + (var1 * (double) calib_data_pressure.par_p5 * 2.0);
-  var2 = (var2 / 4.0) + ((double) calib_data_pressure.par_p4 * 65536.0);
-  var1 = ((((double) calib_data_pressure.par_p3 * var1 * var1) / 16384.0) +
-	  ((double) calib_data_pressure.par_p2 * var1)) / 524288.0;
-  var1 = (1.0 + (var1 / 32768.0)) * (double) calib_data_pressure.par_p1;
-  press_comp = 1048576.0 - (double) press_adc;
-  press_comp = ((press_comp - (var2 / 4096.0)) * 6250.0) / var1;
-  var1 =
-    ((double) calib_data_pressure.par_p9 * press_comp * press_comp) /
-    2147483648.0;
-  var2 = press_comp * ((double) calib_data_pressure.par_p8 / 32768.0);
-  var3 = (press_comp / 256.0) * (press_comp / 256.0) *
-    (press_comp / 256.0) * (calib_data_pressure.par_p10 / 131072.0);
-  press_comp = press_comp + (var1 + var2 + var3 +
-			     ((double) calib_data_pressure.par_p7 * 128.0)) /
-    16.0;
+	double var1, var2, var3, press_comp;
+	var1 = ((double)calib_data_temperature.t_fine / 2.0) - 64000.0;
+	var2 = var1 * var1 * ((double)calib_data_pressure.par_p6 / 131072.0);
+	var2 = var2 + (var1 * (double)calib_data_pressure.par_p5 * 2.0);
+	var2 = (var2 / 4.0) + ((double)calib_data_pressure.par_p4 * 65536.0);
+	var1 = ((((double)calib_data_pressure.par_p3 * var1 * var1) / 16384.0) +
+		((double)calib_data_pressure.par_p2 * var1)) /
+	       524288.0;
+	var1 = (1.0 + (var1 / 32768.0)) * (double)calib_data_pressure.par_p1;
+	press_comp = 1048576.0 - (double)press_adc;
+	press_comp = ((press_comp - (var2 / 4096.0)) * 6250.0) / var1;
+	var1 = ((double)calib_data_pressure.par_p9 * press_comp * press_comp) / 2147483648.0;
+	var2 = press_comp * ((double)calib_data_pressure.par_p8 / 32768.0);
+	var3 = (press_comp / 256.0) * (press_comp / 256.0) * (press_comp / 256.0) *
+	       (calib_data_pressure.par_p10 / 131072.0);
+	press_comp = press_comp +
+		     (var1 + var2 + var3 + ((double)calib_data_pressure.par_p7 * 128.0)) / 16.0;
 
 	return press_comp;
 }
 
-
-void bme680_read_temperature(bme680_manager_t* bme680_device)
+static int bme680_read_temperature(bme680_manager_t *bme680_device)
 {
 	uint8_t read_buf[8] = {0};
 	int err = bme680_read_reg(bme680_device->i2c_dev, read_buf, 3, BME680_TEMP_MSB);
@@ -357,14 +375,13 @@ void bme680_read_temperature(bme680_manager_t* bme680_device)
 		LOG_ERR("read_temp\n");
 	}
 	uint32_t raw_temp = (read_buf[0] << 12) | (read_buf[1] << 4) | (read_buf[2] >> 4);
-	//printf("RAW: %d - %02x %02x %02x\n", raw_temp, read_buf[0], read_buf[1], read_buf[2]);
-	// hexdump(read_buf, 8);
+	LOG_DBG("raw pressure: %u", raw_temp);
+	LOG_HEXDUMP_DBG(read_buf, sizeof(read_buf), "pressure");
 	bme680_device->last_temperature = calc_temperature(raw_temp);
-	
+	return err;
 }
 
-
-void bme680_read_humidity(bme680_manager_t* bme680_device)
+static int bme680_read_humidity(bme680_manager_t *bme680_device)
 {
 	uint8_t read_buf[8] = {0};
 
@@ -373,13 +390,15 @@ void bme680_read_humidity(bme680_manager_t* bme680_device)
 		LOG_ERR("bme680_calib_data_humidity\n");
 	}
 
-	uint32_t raw_humid =  (read_buf[0] << 8) | (read_buf[1]);
-	
+	uint32_t raw_humid = (read_buf[0] << 8) | (read_buf[1]);
+
 	bme680_device->last_humidity = calc_humidity(raw_humid, bme680_device->last_humidity);
-	
+	LOG_DBG("raw humidity: %u", raw_humid);
+	LOG_HEXDUMP_DBG(read_buf, sizeof(read_buf), "pressure");
+	return err;
 }
 
-void bme680_read_pressure(bme680_manager_t* bme680_device)
+static int bme680_read_pressure(bme680_manager_t *bme680_device)
 {
 	uint8_t read_buf[8] = {0};
 	int err = bme680_read_reg(bme680_device->i2c_dev, read_buf, 3, BME680_PRESS_ADC_MSB);
@@ -387,8 +406,37 @@ void bme680_read_pressure(bme680_manager_t* bme680_device)
 		LOG_ERR("read_temp\n");
 	}
 	uint32_t raw_press = (read_buf[0] << 12) | (read_buf[1] << 4) | (read_buf[2] >> 4);
-	//printf("RAW: %d - %02x %02x %02x\n", raw_temp, read_buf[0], read_buf[1], read_buf[2]);
-	// hexdump(read_buf, 8);
+	LOG_DBG("raw pressure: %u", raw_press);
+	LOG_HEXDUMP_DBG(read_buf, sizeof(read_buf), "pressure");
 	bme680_device->last_pressure = calc_pressure(raw_press);
-	
+
+	return err;
+}
+
+/**
+ * @brief
+ * Single TPHG cycle is performed
+ * Sensor automatically returns to sleep mode afterwards
+ * Gas sensor heater only operates during gas measurement
+ * @param bme680_device
+ */
+void bme680_read_sensors(bme680_manager_t *bme680_device)
+{
+	int err = 0;
+	err = set_forced_mode(bme680_device);
+	if (err != 0) {
+		LOG_ERR("error setting forced mode %d", err);
+	}
+	err = bme680_read_temperature(bme680_device);
+	if (err != 0) {
+		LOG_ERR("error reading temperature %d", err);
+	}
+	err = bme680_read_pressure(bme680_device);
+	if (err != 0) {
+		LOG_ERR("error reading pressure %d", err);
+	}
+	err = bme680_read_humidity(bme680_device);
+	if (err != 0) {
+		LOG_ERR("erro reading humidity %d", err);
+	}
 }
