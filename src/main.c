@@ -98,7 +98,7 @@ static struct i2c_target_config i2c_cfg = {
 	.callbacks = &sn_i2c_cbs
 };
 
-const struct device* i2c_dev = DEVICE_DT_GET(DT_NODELABEL(i2c0));
+const struct device* i2c_dev = DEVICE_DT_GET(DT_NODELABEL(i2c1));
 uint32_t i2c_speed_cfg = I2C_SPEED_SET(I2C_SPEED_STANDARD);
 
 
@@ -129,34 +129,34 @@ void i2c_communication_target(void *p1, void *p2, void *p3)
 	}
 }
 
-const struct device *const i2c_dev_source = DEVICE_DT_GET(DT_NODELABEL(i2c1));
-uint32_t i2c_cfg_source = I2C_SPEED_SET(I2C_SPEED_STANDARD) | I2C_MODE_CONTROLLER;
+// const struct device *const i2c_dev_source = DEVICE_DT_GET(DT_NODELABEL(i2c1));
+// uint32_t i2c_cfg_source = I2C_SPEED_SET(I2C_SPEED_STANDARD) | I2C_MODE_CONTROLLER;
 
-void i2c_communication_source(void *p1, void *p2, void *p3){
+// void i2c_communication_source(void *p1, void *p2, void *p3){
 	
-	int err;
-    if (!device_is_ready(i2c_dev_source)) {
-        LOG_ERR("I2C: Device is not ready.\n");
-        return;
-    }
+// 	int err;
+//     if (!device_is_ready(i2c_dev_source)) {
+//         LOG_ERR("I2C: Device is not ready.\n");
+//         return;
+//     }
 
-    err = i2c_configure(i2c_dev_source, i2c_cfg_source);
-    if (err != 0) {
-        LOG_ERR("i2c_configure\n");
-    }
+//     err = i2c_configure(i2c_dev_source, i2c_cfg_source);
+//     if (err != 0) {
+//         LOG_ERR("i2c_configure\n");
+//     }
 
-    uint8_t dummy = 0;
-    while(true){
-        LOG_INF("writing\n");
-        // err = sensor_node_write_reg(i2c_dev, &dummy, 1, 0x01);
-        err = i2c_reg_read_byte(i2c_dev_source, 0x40, 0x01, &dummy);
-        if(err != 0)
-        {
-            LOG_ERR("I2C:%d", err);
-        }
-        k_sleep(K_MSEC(1000));
-    }
-}
+//     uint8_t dummy = 0;
+//     while(true){
+//         LOG_INF("writing\n");
+//         // err = sensor_node_write_reg(i2c_dev, &dummy, 1, 0x01);
+//         err = i2c_reg_read_byte(i2c_dev_source, 0x40, 0x01, &dummy);
+//         if(err != 0)
+//         {
+//             LOG_ERR("I2C:%d", err);
+//         }
+//         k_sleep(K_MSEC(1000));
+//     }
+// }
 
 
 
@@ -165,13 +165,13 @@ void main(void)
 	k_tid_t i2c_thread_tid = k_thread_create(
 		&i2c_thread, i2c_stack, K_THREAD_STACK_SIZEOF(i2c_stack), i2c_communication_target, NULL,
 		NULL, NULL, MY_PRIORITY, K_INHERIT_PERMS, K_FOREVER);
-	k_tid_t polling_thread_tid = k_thread_create(
-		&polling_thread, sensor_polling_stack, K_THREAD_STACK_SIZEOF(sensor_polling_stack),
-		i2c_communication_source, NULL, NULL, NULL, MY_PRIORITY, K_INHERIT_PERMS, K_FOREVER);
+	// k_tid_t polling_thread_tid = k_thread_create(
+	// 	&polling_thread, sensor_polling_stack, K_THREAD_STACK_SIZEOF(sensor_polling_stack),
+	// 	i2c_communication_source, NULL, NULL, NULL, MY_PRIORITY, K_INHERIT_PERMS, K_FOREVER);
 
-	k_thread_cpu_pin(&polling_thread_tid, 0);
+	// k_thread_cpu_pin(&polling_thread_tid, 0);
 	k_thread_cpu_pin(&i2c_thread_tid, 1);
 
 	k_thread_start(i2c_thread_tid);
-	k_thread_start(polling_thread_tid);
+	// k_thread_start(polling_thread_tid);
 }
