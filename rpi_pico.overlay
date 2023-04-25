@@ -26,6 +26,7 @@
     aliases {
                led0 = &myled0;
                led1 = &myled1;
+               
     };
 
     leds {
@@ -37,9 +38,18 @@
                     gpios = <&gpio0 16 GPIO_ACTIVE_HIGH>;
             };
     };
+
+    
+    sensors {
+        compatible = "gpio-leds";
+        my_us: us0 {
+            gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>; // sig
+            status = "okay";
+        };
+    };
 };
 
-
+// TODO add pin to connect master through i2c 1
 &pinctrl {
     i2c1_default: i2c1_default {
         group1 {

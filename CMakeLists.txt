@@ -6,6 +6,7 @@ cmake_minimum_required(VERSION 3.20.0)
 list(APPEND ZEPHYR_EXTRA_MODULES
   ${CMAKE_CURRENT_SOURCE_DIR}/drivers/adxl345
   ${CMAKE_CURRENT_SOURCE_DIR}/drivers/bme680
+  ${CMAKE_CURRENT_SOURCE_DIR}/drivers/ultrasonic
   )
 
 # Select our board 
