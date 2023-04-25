@@ -15,7 +15,7 @@
 #define MY_STACK_SIZE 5000
 #define MY_PRIORITY   5
 
-#define REFRESH_TIME 1000
+#define REFRESH_TIME 400
 
 LOG_MODULE_REGISTER(main);
 

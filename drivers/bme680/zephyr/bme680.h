@@ -31,9 +31,9 @@ typedef struct bme680_manager_t {
 	uint8_t press_oversampling; // 0x74 <4..2>
 	uint8_t forced_mode;
 
-	float last_temperature;
-	float last_humidity;
-	float last_pressure;
+	double last_temperature;
+	double last_humidity;
+	double last_pressure;
 } bme680_manager_t;
 
 typedef struct bme680_temp_calib_data_t {

@@ -57,6 +57,9 @@
 #define BME680_PRESS_MSB    0x1F
 #define BME680_EAS_STATUS_0 0x1D
 
+#define BME680_TEMP(byte) \
+         byte - BME680_TEMP_MSB
+
 // Parameters for temperature sensor
 #define BME680_PAR_T1_LSB 0xE9
 #define BME680_PAR_T1_MSB 0xEA
@@ -81,9 +84,17 @@
 #define BME680_PAR_P9_LSB     0x9E
 #define BME680_PAR_P9_MSB     0x9F
 #define BME680_PAR_P10	      0xA0
+
+#define PRESS_PARAM(byte) \
+        byte - BME680_PAR_P1_LSB
+
+// ADC registers for pressure measurement
 #define BME680_PRESS_ADC_XLSB 0x21
 #define BME680_PRESS_ADC_LSB  0x20
 #define BME680_PRESS_ADC_MSB  0x1F
+
+#define BME680_PRESS(byte) \
+         byte - BME680_PRESS_ADC_MSB
 
 // Parameters for the Humidity sensor
 #define BME680_PAR_H1_LSB  0xE2
@@ -95,6 +106,11 @@
 #define BME680_PAR_H5	   0xE6
 #define BME680_PAR_H6	   0xE7
 #define BME680_PAR_H7	   0xE8
+
+#define HUM_PARAM(byte) \
+    byte - BME680_PAR_H2_MSB
+
+// ADC registers for humidy measurements
 #define BME680_HUM_ADC_LSB 0x26
 #define BME680_HUM_ADC_MSB 0x25
 
