@@ -7,24 +7,11 @@
 // #include <zephyr/drivers/gpio.h>
 #define TIMEOUT 10000000L
 
-LOG_MODULE_REGISTER(ultrasonic);
+LOG_MODULE_REGISTER(ultrasonic, LOG_LEVEL_INF);
 
-const struct gpio_dt_spec us0 = GPIO_DT_SPEC_GET(DT_NODELABEL(my_us), gpios);
+struct gpio_dt_spec us0 = GPIO_DT_SPEC_GET(DT_NODELABEL(my_us), gpios);
 
-// Get elapsed time in microseconds
-uint32_t micros(void) {
-    // Get current time in CPU cycles
-    uint32_t cycles = k_cycle_get_32();
-
-    // Convert cycles to microseconds using system's clock frequency
-    uint32_t freq = sys_clock_hw_cycles_per_sec();
-    return (cycles * 1000000) / freq;
-}
-
-static uint32_t MicrosDiff(uint32_t begin, uint32_t end) {
-    return end - begin;
-}
-
+ultrasonic_manager_t* ultrasonic_device_global = NULL;
 static bool start_read = false;
 
 void ultrasonic_isr(const struct device *dev, struct gpio_callback *cb, uint32_t pins){
@@ -41,41 +28,9 @@ void ultrasonic_isr(const struct device *dev, struct gpio_callback *cb, uint32_t
 	{
 		end = k_cycle_get_32();
 		edge ^= true;
-		float diff = k_cyc_to_us_floor64(end - begin)/ 29 / 2;
-		
-		printf("start: %u end: %u INT: %f\n", begin, end, diff);
-// 		start_read = true;
+		ultrasonic_device_global->distance = k_cyc_to_us_floor64(end - begin)/ 29 / 2;        
 	}
 	}
-}
-
-static uint32_t pulseIn(ultrasonic_manager_t* ultrasonic_device) {
-    uint32_t begin = k_cycle_get_32();
-
-    // wait for any previous pulse to end
-    while (gpio_pin_get(ultrasonic_device->signal->port, ultrasonic_device->signal->pin)) {
-        if (MicrosDiff(begin, k_cycle_get_32()) >= TIMEOUT) {
-            return 0;
-        }
-    }
-
-    // wait for the pulse to start
-    while (!gpio_pin_get(ultrasonic_device->signal->port, ultrasonic_device->signal->pin)) {
-        if (MicrosDiff(begin, k_cycle_get_32()) >= TIMEOUT) {
-            return 0;
-        }
-    }
-    uint32_t pulseBegin = k_cycle_get_32();
-
-    // wait for the pulse to stop
-    while (gpio_pin_get(ultrasonic_device->signal->port, ultrasonic_device->signal->pin)) {
-        if (MicrosDiff(begin, k_cycle_get_32()) >= TIMEOUT) {
-            return 0;
-        }
-    }
-    uint32_t pulseEnd = k_cycle_get_32();
-
-    return MicrosDiff(pulseBegin, pulseEnd);
 }
 
 static struct gpio_callback ultrasonic_cb_data;
@@ -106,10 +61,11 @@ void ultrasonic_init(ultrasonic_manager_t* ultrasonic_device) {
 			 err, ultrasonic_device->signal->pin);
 		return;
 	}
+    ultrasonic_device_global = ultrasonic_device;
 
 }
 
-uint32_t ultrasonic_duration(ultrasonic_manager_t* ultrasonic_device) {
+void ultrasonic_duration(ultrasonic_manager_t* ultrasonic_device) {
 	start_read = false;
 	gpio_pin_configure(ultrasonic_device->signal->port, ultrasonic_device->signal->pin, GPIO_OUTPUT_LOW);
     k_busy_wait(2000); // 2 microseconds
@@ -118,25 +74,6 @@ uint32_t ultrasonic_duration(ultrasonic_manager_t* ultrasonic_device) {
     gpio_pin_configure(ultrasonic_device->signal->port, ultrasonic_device->signal->pin, GPIO_OUTPUT_LOW);
     gpio_pin_configure(ultrasonic_device->signal->port, ultrasonic_device->signal->pin, GPIO_INPUT);
 	start_read = true;
-    long duration;
-    //duration = pulseIn(ultrasonic_device);
-    return 0;
-    // return pulseIn(ultrasonic_device->signal->port, ultrasonic_device->signal->pin, 1, timeout);
-}
-
-/* The measured distance from the range 0 to 400 Centimeters */
-uint32_t ultrasonic_measure_in_centimeters(ultrasonic_manager_t* ultrasonic_device) {
-    return ultrasonic_duration(ultrasonic_device) / 29 / 2;
-}
-
-/* The measured distance from the range 0 to 4000 Millimeters */
-uint32_t ultrasonic_measure_in_millimeters(ultrasonic_manager_t* ultrasonic_device, uint32_t timeout) {
-    return ultrasonic_duration(ultrasonic_device) * (10 / 2) / 29;
-}
-
-/* The measured distance from the range 0 to 157 Inches */
-uint32_t ultrasonic_measure_in_inches(ultrasonic_manager_t* ultrasonic_device, uint32_t timeout) {
-    return ultrasonic_duration(ultrasonic_device) / 74 / 2;
 }
 
 

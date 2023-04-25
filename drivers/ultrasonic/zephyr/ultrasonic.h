@@ -18,6 +18,6 @@ void ultrasonic_constructor(ultrasonic_manager_t* ultrasonic_device);
 
 void ultrasonic_read_distance();
 void ultrasonic_init(ultrasonic_manager_t* ultrasonic_device);
-uint32_t ultrasonic_measure_in_centimeters(ultrasonic_manager_t* ultrasonic_device);
+void ultrasonic_duration(ultrasonic_manager_t* ultrasonic_device);
 
 #endif /* ULTRASONIC_H */
