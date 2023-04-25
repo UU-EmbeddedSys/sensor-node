@@ -16,7 +16,6 @@ typedef struct ultrasonic_manager_t{
 
 void ultrasonic_constructor(ultrasonic_manager_t* ultrasonic_device);
 
-void ultrasonic_read_distance();
 void ultrasonic_init(ultrasonic_manager_t* ultrasonic_device);
 void ultrasonic_duration(ultrasonic_manager_t* ultrasonic_device);
 

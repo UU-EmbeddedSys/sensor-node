@@ -16,7 +16,7 @@
 #define MY_STACK_SIZE 5000
 #define MY_PRIORITY   5
 
-#define REFRESH_TIME 400
+#define REFRESH_TIME 500
 
 LOG_MODULE_REGISTER(main);
 
@@ -42,11 +42,13 @@ void sensor_polling(void *p1, void *p2, void *p3)
 {
 	gpio_pin_configure_dt(&led0, GPIO_OUTPUT_INACTIVE);
 
-	// bme680_constructor(&(sensor_tree.bme680_device));
+	bme680_constructor(&(sensor_tree.bme680_device));
 	ultrasonic_init(&(sensor_tree.ultrasonic_device));
 	while (true) {
 		k_sleep(K_MSEC(REFRESH_TIME));
+		
 		bme680_read_sensors(&(sensor_tree.bme680_device));
+		ultrasonic_duration(&(sensor_tree.ultrasonic_device));
 
 		gpio_pin_toggle_dt(&led0);
 	}
@@ -58,8 +60,13 @@ void i2c_communication(void *p1, void *p2, void *p3)
 
 	LOG_INF("I2C thread started\n");
 	while (true) {
-		printf("Distance: %f\n",
-			sensor_tree.ultrasonic_device.distance); 
+		printf("Distance: %f\n", sensor_tree.ultrasonic_device.distance); 
+		printf("Temperature: %f\n", sensor_tree.bme680_device.last_temperature);
+		printf("Humidity: %f\n", sensor_tree.bme680_device.last_humidity);
+		printf("Pressure: %f\n", sensor_tree.bme680_device.last_pressure); 
+
+
+		printf("--------------------\n");
 		gpio_pin_toggle_dt(&led1);
 		k_sleep(K_MSEC(1000));
 	}
@@ -74,8 +81,8 @@ void main(void)
 		&polling_thread, sensor_polling_stack, K_THREAD_STACK_SIZEOF(sensor_polling_stack),
 		sensor_polling, NULL, NULL, NULL, MY_PRIORITY, K_INHERIT_PERMS, K_FOREVER);
 
-	k_thread_cpu_pin(&polling_thread_tid, 0);
-	k_thread_cpu_pin(&i2c_thread_tid, 1);
+	k_thread_cpu_pin((k_tid_t) &polling_thread_tid, 0);
+	k_thread_cpu_pin((k_tid_t) &i2c_thread_tid, 1);
 
 	k_thread_start(i2c_thread_tid);
 	k_thread_start(polling_thread_tid);
