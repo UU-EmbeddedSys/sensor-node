@@ -1,6 +1,10 @@
 #ifndef I2C_REGISTERS_H
 #define I2C_REGISTERS_H
 
+//TEST REGISTER
+//read: 1x8bytes(double)
+#define TEST_READ 0x10
+
 
 //BME680
 //read: 3x8 bytes (double) temperature, pressure, humidity
@@ -14,6 +18,9 @@
 #define BME680_CONFIG_HUMIDITY 0x7A
 
 //ULTRASONIC
-
+//read: 1x4bytes (float) distance in cm
+//configuration 1x1byte (uint8_t) polling rate (not implemented)
+#define ULTRASONIC_READ 0x80 //until 0x83
+#define ULTRASONIC_POLLING 0x8A 
 
 #endif

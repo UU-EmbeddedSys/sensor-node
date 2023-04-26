@@ -8,6 +8,7 @@
 #include "bme680.h"
 #include "adxl345.h"
 #include "sample.h"
+#include "i2c_registers.h"
 
 #define LED0_NODE DT_ALIAS(led0)
 #define LED1_NODE DT_ALIAS(led1)
@@ -49,8 +50,36 @@ void sensor_polling(void *p1, void *p2, void *p3)
 	}
 }
 
+uint64_t test_value = 0x8877665544332211; //this is because I don't have a real sensor yet
 
-uint8_t register_requested = -1;
+uint8_t send_buffer = 0x00;
+uint8_t left_to_send = 0;
+uint8_t* address_to_next = NULL;
+
+void i2c_start_read(uint8_t address){
+	if(address == TEST_READ){
+		address_to_next = (uint8_t*)&test_value;
+
+
+		send_buffer = *((uint8_t*)address_to_next);
+		address_to_next++;
+		left_to_send--;
+	}
+}
+
+void i2c_load_next_streamed_value(){
+	if(left_to_send > 0){
+		send_buffer = *((uint8_t*)address_to_next);
+		address_to_next++;
+		left_to_send--;
+	}
+	else{
+		send_buffer = 0x00;
+	}
+}
+
+
+
 
 // typedef int (*i2c_target_write_requested_cb_t)(struct i2c_target_config *config);
 int our_i2c_write_requested(struct i2c_target_config *config){
@@ -59,30 +88,35 @@ int our_i2c_write_requested(struct i2c_target_config *config){
 }
 // typedef int (*i2c_target_read_requested_cb_t)(struct i2c_target_config *config, uint8_t *val);
 int our_i2c_read_requested(struct i2c_target_config *config, uint8_t *val){
-	printf("Read requested\n");
-	*val = 0xFF;
+	*val = send_buffer;
+	printf("Read requested (left to send %d): Answering with 0x%02x\n", left_to_send, *val);	
+
+	i2c_load_next_streamed_value();
 	return 0;
 }
 
 // typedef int (*i2c_target_write_received_cb_t)( struct i2c_target_config *config, uint8_t val);
-int our_i2c_write_received(struct i2c_target_config *config, uint8_t val){
-	printf("Write received for register %d\n", val);
-	register_requested = val;
+int our_i2c_write_received(struct i2c_target_config *config, uint8_t addr){
+	printf("Write received for register %d\n", addr);
+	i2c_start_read(addr);
 	return 0;
 }
 
 // typedef int (*i2c_target_read_processed_cb_t)(struct i2c_target_config *config, uint8_t *val);
 int our_i2c_read_processed(struct i2c_target_config *config, uint8_t *val){
 	printf("Read processed\n");
-	*val = 0x10;
+	*val = 0x00;
 	return 0;
 }
 // typedef int (*i2c_target_stop_cb_t)(struct i2c_target_config *config);
 int our_i2c_stop(struct i2c_target_config *config){
 	printf("Stop\n");
-	register_requested = -1;
+	address_to_next = NULL;
+	left_to_send = 0;
+	send_buffer = 0x00;
 	return 0;
 }
+
 
 
 /* Create a static initializer for a struct i2c_dt_spec */
