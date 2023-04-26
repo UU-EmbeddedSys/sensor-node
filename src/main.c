@@ -40,9 +40,6 @@ typedef struct sensor_tree_t {
 
 sensor_tree_t sensor_tree;
 
-double test_value = 0.5; //this is because I don't have a real sensor yet
-
-
 void sensor_polling(void *p1, void *p2, void *p3)
 {
 	gpio_pin_configure_dt(&led0, GPIO_OUTPUT_INACTIVE);
@@ -57,15 +54,11 @@ void sensor_polling(void *p1, void *p2, void *p3)
 
 		gpio_pin_toggle_dt(&led0);
 
-		LOG_INF("\nT: %lf, P: %lf, H: %lf test: %lf\n", 
+		LOG_INF("\nT: %lf, P: %lf, H: %lf\n", 
 			sensor_tree.bme680_device.last_temperature,
 			sensor_tree.bme680_device.last_pressure,
-			sensor_tree.bme680_device.last_humidity,
-			test_value);
+			sensor_tree.bme680_device.last_humidity);
 
-		for (int i = 0; i < 8; i++) {
-			printk("0x%02x ", ((uint8_t*)(&test_value))[i]);
-		}
 		printk("\n");
 	}
 }
@@ -88,11 +81,19 @@ void i2c_load_next_streamed_value(){
 	}
 }
 
+double test_value_double = 0.5; //this is because I don't have a real sensor yet
+uint64_t test_value_scale = 0x1122334455667788;
+
 void i2c_start_read(uint8_t address){
 	switch(address){
-		case TEST_READ:
+		case TEST_READ_DOUBLE:
 			//setup
-			address_to_next = (uint8_t*)&test_value;
+			address_to_next = (uint8_t*)&test_value_double;
+			left_to_send = 8;
+			break;
+		case TEST_READ_SCALE:
+			//setup
+			address_to_next = (uint8_t*)&test_value_scale;
 			left_to_send = 8;
 			break;
 		case BME680_READ_TEMP:

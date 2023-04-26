@@ -3,7 +3,8 @@
 
 //TEST REGISTER
 //read: 1x8bytes(double)
-#define TEST_READ 0x10
+#define TEST_READ_DOUBLE 0x10
+#define TEST_READ_SCALE 0x20
 
 
 //BME680
