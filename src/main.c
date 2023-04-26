@@ -40,6 +40,9 @@ typedef struct sensor_tree_t {
 
 sensor_tree_t sensor_tree;
 
+double test_value = 0.5; //this is because I don't have a real sensor yet
+
+
 void sensor_polling(void *p1, void *p2, void *p3)
 {
 	gpio_pin_configure_dt(&led0, GPIO_OUTPUT_INACTIVE);
@@ -54,54 +57,25 @@ void sensor_polling(void *p1, void *p2, void *p3)
 
 		gpio_pin_toggle_dt(&led0);
 
-		LOG_INF("T: %lf, P: %lf, H: %lf", 
+		LOG_INF("\nT: %lf, P: %lf, H: %lf test: %lf\n", 
 			sensor_tree.bme680_device.last_temperature,
 			sensor_tree.bme680_device.last_pressure,
-			sensor_tree.bme680_device.last_humidity);
+			sensor_tree.bme680_device.last_humidity,
+			test_value);
+
+		for (int i = 0; i < 8; i++) {
+			printk("0x%02x ", ((uint8_t*)(&test_value))[i]);
+		}
+		printk("\n");
 	}
 }
 
 
 //I2C
-uint64_t test_value = 0x8877665544332211; //this is because I don't have a real sensor yet
 
 uint8_t send_buffer = 0x00;
 uint8_t left_to_send = 0;
 uint8_t* address_to_next = NULL;
-
-void i2c_start_read(uint8_t address){
-	if(address == TEST_READ){
-		//setup
-		address_to_next = (uint8_t*)&test_value;
-		left_to_send = 8;
-		i2c_load_next_streamed_value();
-	}
-	if(address == BME680_READ_TEMP){
-		//setup
-		address_to_next = (uint8_t*)&(sensor_tree.bme680_device.last_temperature);
-		left_to_send = 8;
-		i2c_load_next_streamed_value();
-	}
-	if(address == BME680_READ_PRESSURE){
-		//setup
-		address_to_next = (uint8_t*)&(sensor_tree.bme680_device.last_pressure);
-		left_to_send = 8;
-		i2c_load_next_streamed_value();
-	}
-	if(address == BME680_READ_HUMIDITY){
-		//setup
-		address_to_next = (uint8_t*)&(sensor_tree.bme680_device.last_humidity);
-		left_to_send = 8;
-		i2c_load_next_streamed_value();
-	}
-	if(address == ULTRASONIC_READ){
-		//setup
-		address_to_next = (uint8_t*)&(sensor_tree.ultrasonic_device.distance);
-		left_to_send = 4;
-		i2c_load_next_streamed_value();
-	}
-
-}
 
 void i2c_load_next_streamed_value(){
 	if(left_to_send > 0){
@@ -112,6 +86,44 @@ void i2c_load_next_streamed_value(){
 	else{
 		send_buffer = 0x00;
 	}
+}
+
+void i2c_start_read(uint8_t address){
+	switch(address){
+		case TEST_READ:
+			//setup
+			address_to_next = (uint8_t*)&test_value;
+			left_to_send = 8;
+			break;
+		case BME680_READ_TEMP:
+			//setup
+			address_to_next = (uint8_t*)&(sensor_tree.bme680_device.last_temperature);
+			left_to_send = 8;
+			break;
+		case BME680_READ_PRESSURE:
+			//setup
+			address_to_next = (uint8_t*)&(sensor_tree.bme680_device.last_pressure);
+			left_to_send = 8;
+			break;
+	
+		case BME680_READ_HUMIDITY:
+			//setup
+			address_to_next = (uint8_t*)&(sensor_tree.bme680_device.last_humidity);
+			left_to_send = 8;
+			break;
+	
+		case ULTRASONIC_READ:
+			//setup
+			address_to_next = (uint8_t*)&(sensor_tree.ultrasonic_device.distance);
+			left_to_send = 4;
+			break;
+		default:
+			address_to_next = NULL;
+			left_to_send = 0;
+			break;
+	}
+	i2c_load_next_streamed_value();
+
 }
 
 // typedef int (*i2c_target_write_requested_cb_t)(struct i2c_target_config *config);
