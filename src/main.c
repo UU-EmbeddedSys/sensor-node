@@ -74,9 +74,33 @@ void i2c_start_read(uint8_t address){
 		//setup
 		address_to_next = (uint8_t*)&test_value;
 		left_to_send = 8;
-
 		i2c_load_next_streamed_value();
 	}
+	if(address == BME680_READ_TEMP){
+		//setup
+		address_to_next = (uint8_t*)&(sensor_tree.bme680_device.last_temperature);
+		left_to_send = 8;
+		i2c_load_next_streamed_value();
+	}
+	if(address == BME680_READ_PRESSURE){
+		//setup
+		address_to_next = (uint8_t*)&(sensor_tree.bme680_device.last_pressure);
+		left_to_send = 8;
+		i2c_load_next_streamed_value();
+	}
+	if(address == BME680_READ_HUMIDITY){
+		//setup
+		address_to_next = (uint8_t*)&(sensor_tree.bme680_device.last_humidity);
+		left_to_send = 8;
+		i2c_load_next_streamed_value();
+	}
+	if(address == ULTRASONIC_READ){
+		//setup
+		address_to_next = (uint8_t*)&(sensor_tree.ultrasonic_device.distance);
+		left_to_send = 4;
+		i2c_load_next_streamed_value();
+	}
+
 }
 
 void i2c_load_next_streamed_value(){
