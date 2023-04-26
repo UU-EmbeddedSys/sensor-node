@@ -50,34 +50,39 @@ void sensor_polling(void *p1, void *p2, void *p3)
 }
 
 
+uint8_t register_requested = -1;
+
 // typedef int (*i2c_target_write_requested_cb_t)(struct i2c_target_config *config);
 int our_i2c_write_requested(struct i2c_target_config *config){
-	printf("Write requested\n");
+	printf("Write requested \n");
 	return 0;
 }
 // typedef int (*i2c_target_read_requested_cb_t)(struct i2c_target_config *config, uint8_t *val);
 int our_i2c_read_requested(struct i2c_target_config *config, uint8_t *val){
 	printf("Read requested\n");
+	*val = 0xFF;
 	return 0;
 }
 
 // typedef int (*i2c_target_write_received_cb_t)( struct i2c_target_config *config, uint8_t val);
 int our_i2c_write_received(struct i2c_target_config *config, uint8_t val){
-	printf("Write received\n");
+	printf("Write received for register %d\n", val);
+	register_requested = val;
 	return 0;
 }
 
 // typedef int (*i2c_target_read_processed_cb_t)(struct i2c_target_config *config, uint8_t *val);
 int our_i2c_read_processed(struct i2c_target_config *config, uint8_t *val){
 	printf("Read processed\n");
+	*val = 0x10;
 	return 0;
 }
 // typedef int (*i2c_target_stop_cb_t)(struct i2c_target_config *config);
 int our_i2c_stop(struct i2c_target_config *config){
 	printf("Stop\n");
+	register_requested = -1;
 	return 0;
 }
-
 
 
 /* Create a static initializer for a struct i2c_dt_spec */
@@ -128,36 +133,6 @@ void i2c_communication_target(void *p1, void *p2, void *p3)
 		k_sleep(K_MSEC(REFRESH_TIME));
 	}
 }
-
-// const struct device *const i2c_dev_source = DEVICE_DT_GET(DT_NODELABEL(i2c1));
-// uint32_t i2c_cfg_source = I2C_SPEED_SET(I2C_SPEED_STANDARD) | I2C_MODE_CONTROLLER;
-
-// void i2c_communication_source(void *p1, void *p2, void *p3){
-	
-// 	int err;
-//     if (!device_is_ready(i2c_dev_source)) {
-//         LOG_ERR("I2C: Device is not ready.\n");
-//         return;
-//     }
-
-//     err = i2c_configure(i2c_dev_source, i2c_cfg_source);
-//     if (err != 0) {
-//         LOG_ERR("i2c_configure\n");
-//     }
-
-//     uint8_t dummy = 0;
-//     while(true){
-//         LOG_INF("writing\n");
-//         // err = sensor_node_write_reg(i2c_dev, &dummy, 1, 0x01);
-//         err = i2c_reg_read_byte(i2c_dev_source, 0x40, 0x01, &dummy);
-//         if(err != 0)
-//         {
-//             LOG_ERR("I2C:%d", err);
-//         }
-//         k_sleep(K_MSEC(1000));
-//     }
-// }
-
 
 
 void main(void)
