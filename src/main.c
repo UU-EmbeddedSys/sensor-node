@@ -10,6 +10,7 @@
 #include "ultrasonic.h"
 #include "sample.h"
 #include "i2c_registers.h"
+#include "bme680_registers.h"
 
 #define LED0_NODE DT_ALIAS(led0)
 #define LED1_NODE DT_ALIAS(led1)
@@ -19,7 +20,8 @@
 
 #define REFRESH_TIME 500
 
-LOG_MODULE_REGISTER(main);
+LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
+
 
 K_THREAD_STACK_DEFINE(i2c_stack, MY_STACK_SIZE);
 K_THREAD_STACK_DEFINE(sensor_polling_stack, MY_STACK_SIZE);
@@ -45,52 +47,19 @@ void sensor_polling(void *p1, void *p2, void *p3)
 	gpio_pin_configure_dt(&led0, GPIO_OUTPUT_INACTIVE);
 
 	bme680_constructor(&(sensor_tree.bme680_device));
-	//ultrasonic_init(&(sensor_tree.ultrasonic_device));
+	ultrasonic_init(&(sensor_tree.ultrasonic_device));
 	while (true) {
 		k_sleep(K_MSEC(REFRESH_TIME));
 		
 		bme680_read_sensors(&(sensor_tree.bme680_device));
-		//ultrasonic_duration(&(sensor_tree.ultrasonic_device));
+		ultrasonic_duration(&(sensor_tree.ultrasonic_device));
 
+		printf("CONFIGURATIONS TEMP: %d\n", sensor_tree.bme680_device.temp_oversampling);
 		gpio_pin_toggle_dt(&led0);
 
-		// LOG_INF("\nT: %lf, P: %lf, H: %lf\n", 
-		// 	sensor_tree.bme680_device.last_temperature,
-		// 	sensor_tree.bme680_device.last_pressure,
-		// 	sensor_tree.bme680_device.last_humidity);
-
-		printk("\n");
 	}
 }
 
-
-//I2C
-
-/*
-Explanation for tomorrow:
-basically it supports multibyte read but only single byte write, but thats fine we dont need anything else.
-
-the thing is that when the driver sends one read (of X bytes) and then one write and then one read again,
-everything worked as expected, but then I tested two writes following each other and thats the problem
-I've tried modifying Alessios write function, ive tried using the stock writing a single byte function
-nothing seems to work as expected because what it does is that:
-
-write requests
-write receives (address of register)
-stop
-write requests
-write receives (contents of register)
-write receives (address of the second register to write)
-write receives (contents of the second register )
-
-
-so the problem there was that I cannot know when to start writing the second register
-now i've solved it but yeah we cannot write two bytes to a single memory address
-only single byte writes to each register, but thats all we need
-to configure the sensor node as the sampling rates all fit within one byte for each configuration
-
-
-*/
 
 uint8_t send_buffer = 0x00;
 uint8_t left_to_send = 0;
@@ -107,7 +76,7 @@ void i2c_load_next_streamed_value(){
 		left_to_send--;
 	}
 	else{
-		send_buffer = 0x00;
+		send_buffer = 0xFF;
 	}
 }
 
@@ -122,6 +91,7 @@ void i2c_write_register(uint8_t value){
 			break;
 		case BME680_CONFIG_TEMP:
 			sensor_tree.bme680_device.temp_oversampling = value;
+			LOG_INF("Writing %d", value);
 			break;
 		case BME680_CONFIG_PRESSURE:
 			sensor_tree.bme680_device.press_oversampling = value;
@@ -137,18 +107,18 @@ void i2c_write_register(uint8_t value){
 
 // typedef int (*i2c_target_write_requested_cb_t)(struct i2c_target_config *config);
 int our_i2c_write_requested(struct i2c_target_config *config){
-	printf("Write requested \n");
+	LOG_DBG("Write requested \n");
 
 	if(!last_instruction_is_write && writing_mode){
-		printf("PREPARE FOR WRITING\n");
+		LOG_DBG("PREPARE FOR WRITING\n");
 	}
 	else if(last_instruction_is_write && writing_mode){
-		printf("WE'VE FINISHED PREVIOUS WRITE STREAK\n");
+		LOG_DBG("WE'VE FINISHED PREVIOUS WRITE STREAK\n");
 		last_instruction_is_write = false;
 		writing_mode = 0;
 	}
 	if(!last_instruction_is_write && !writing_mode){
-		printf("WE COME FROM READING\n");
+		LOG_DBG("WE COME FROM READING\n");
 	}
 	
 
@@ -157,14 +127,14 @@ int our_i2c_write_requested(struct i2c_target_config *config){
 // typedef int (*i2c_target_read_requested_cb_t)(struct i2c_target_config *config, uint8_t *val);
 int our_i2c_read_requested(struct i2c_target_config *config, uint8_t *val){
 	*val = send_buffer;
-	printf("Read requested (left to send %d): Answering with 0x%02x\n", left_to_send, *val);	
+	LOG_DBG("Read requested (left to send %d): Answering with 0x%02x\n", left_to_send, *val);	
 	last_instruction_is_write = false;	
 	i2c_load_next_streamed_value();
 	return 0;
 }
 // typedef int (*i2c_target_write_received_cb_t)( struct i2c_target_config *config, uint8_t val);
 int our_i2c_write_received(struct i2c_target_config *config, uint8_t address){
-	printf("Write received %02x\n", address);
+	LOG_DBG("Write received %02x\n", address);
 	if(writing_mode && !last_instruction_is_write){
 		i2c_write_register(address);
 		writing_mode = 2;
@@ -211,6 +181,25 @@ int our_i2c_write_received(struct i2c_target_config *config, uint8_t address){
 			address_to_next = (uint8_t*)&(sensor_tree.ultrasonic_device.distance);
 			left_to_send = 4;
 			break;
+
+		case BME680_CONFIG_HUMIDITY:
+			//setup
+			address_to_next = (uint8_t*)&(sensor_tree.bme680_device.hum_oversampling);
+			left_to_send = 1;
+			break;
+		
+		case BME680_CONFIG_PRESSURE:
+			//setup
+			address_to_next = (uint8_t*)&(sensor_tree.bme680_device.press_oversampling);
+			left_to_send = 1;
+			break;
+
+		case BME680_CONFIG_TEMP:
+			//setup
+			address_to_next = (uint8_t*)&(sensor_tree.bme680_device.temp_oversampling);
+			left_to_send = 1;
+			break;
+		
 		default:
 			address_to_next = NULL;
 			left_to_send = 0;
@@ -223,13 +212,13 @@ int our_i2c_write_received(struct i2c_target_config *config, uint8_t address){
 }
 // typedef int (*i2c_target_read_processed_cb_t)(struct i2c_target_config *config, uint8_t *val);
 int our_i2c_read_processed(struct i2c_target_config *config, uint8_t *val){
-	printf("Read processed\n");
+	LOG_DBG("Read processed\n");
 	*val = 0x00;
 	return 0;
 }
 // typedef int (*i2c_target_stop_cb_t)(struct i2c_target_config *config);
 int our_i2c_stop(struct i2c_target_config *config){
-	printf("Stop\n");
+	LOG_DBG("Stop\n");
 	address_to_next = NULL;
 	left_to_send = 0;
 	send_buffer = 0x00;
