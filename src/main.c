@@ -54,10 +54,10 @@ void sensor_polling(void *p1, void *p2, void *p3)
 
 		gpio_pin_toggle_dt(&led0);
 
-		LOG_INF("\nT: %lf, P: %lf, H: %lf\n", 
-			sensor_tree.bme680_device.last_temperature,
-			sensor_tree.bme680_device.last_pressure,
-			sensor_tree.bme680_device.last_humidity);
+		// LOG_INF("\nT: %lf, P: %lf, H: %lf\n", 
+		// 	sensor_tree.bme680_device.last_temperature,
+		// 	sensor_tree.bme680_device.last_pressure,
+		// 	sensor_tree.bme680_device.last_humidity);
 
 		printk("\n");
 	}
@@ -69,6 +69,10 @@ void sensor_polling(void *p1, void *p2, void *p3)
 uint8_t send_buffer = 0x00;
 uint8_t left_to_send = 0;
 uint8_t* address_to_next = NULL;
+
+uint8_t register_writing_address = 0xFF;
+bool last_instruction_is_write = false;
+uint8_t writing_mode = 0;
 
 void i2c_load_next_streamed_value(){
 	if(left_to_send > 0){
@@ -84,7 +88,70 @@ void i2c_load_next_streamed_value(){
 double test_value_double = 0.5; //this is because I don't have a real sensor yet
 uint64_t test_value_scale = 0x1122334455667788;
 
-void i2c_start_read(uint8_t address){
+void i2c_write_register(uint8_t value){
+	
+	switch(register_writing_address){
+		case BME680_CONFIG_HUMIDITY:
+			sensor_tree.bme680_device.hum_oversampling = value;
+			break;
+		case BME680_CONFIG_TEMP:
+			sensor_tree.bme680_device.temp_oversampling = value;
+			break;
+		case BME680_CONFIG_PRESSURE:
+			sensor_tree.bme680_device.press_oversampling = value;
+			break;
+		default:
+			printf("Writing register %02x WITH VALUE %02x\n", register_writing_address, value);
+			break;
+	}
+	writing_mode += 1;
+
+}
+
+
+// typedef int (*i2c_target_write_requested_cb_t)(struct i2c_target_config *config);
+int our_i2c_write_requested(struct i2c_target_config *config){
+	printf("Write requested \n");
+
+	if(!last_instruction_is_write && writing_mode){
+		printf("PREPARE FOR WRITING\n");
+	}
+	else if(last_instruction_is_write && writing_mode){
+		printf("WE'VE FINISHED PREVIOUS WRITE STREAK\n");
+		last_instruction_is_write = false;
+		writing_mode = 0;
+	}
+	if(!last_instruction_is_write && !writing_mode){
+		printf("WE COME FROM READING\n");
+	}
+	
+
+	return 0;
+}
+// typedef int (*i2c_target_read_requested_cb_t)(struct i2c_target_config *config, uint8_t *val);
+int our_i2c_read_requested(struct i2c_target_config *config, uint8_t *val){
+	*val = send_buffer;
+	printf("Read requested (left to send %d): Answering with 0x%02x\n", left_to_send, *val);	
+	last_instruction_is_write = false;	
+	i2c_load_next_streamed_value();
+	return 0;
+}
+// typedef int (*i2c_target_write_received_cb_t)( struct i2c_target_config *config, uint8_t val);
+int our_i2c_write_received(struct i2c_target_config *config, uint8_t address){
+	printf("Write received %02x\n", address);
+	if(writing_mode && !last_instruction_is_write){
+		i2c_write_register(address);
+		writing_mode = 2;
+		last_instruction_is_write = true;
+		return 0;
+	}
+	
+	last_instruction_is_write = true;
+	
+	if (writing_mode == 2 && last_instruction_is_write){
+		register_writing_address = address;
+		last_instruction_is_write = false;
+	}
 	switch(address){
 		case TEST_READ_DOUBLE:
 			//setup
@@ -123,27 +190,9 @@ void i2c_start_read(uint8_t address){
 			left_to_send = 0;
 			break;
 	}
+	register_writing_address = address;
 	i2c_load_next_streamed_value();
 
-}
-
-// typedef int (*i2c_target_write_requested_cb_t)(struct i2c_target_config *config);
-int our_i2c_write_requested(struct i2c_target_config *config){
-	printf("Write requested \n");
-	return 0;
-}
-// typedef int (*i2c_target_read_requested_cb_t)(struct i2c_target_config *config, uint8_t *val);
-int our_i2c_read_requested(struct i2c_target_config *config, uint8_t *val){
-	*val = send_buffer;
-	printf("Read requested (left to send %d): Answering with 0x%02x\n", left_to_send, *val);	
-
-	i2c_load_next_streamed_value();
-	return 0;
-}
-// typedef int (*i2c_target_write_received_cb_t)( struct i2c_target_config *config, uint8_t val);
-int our_i2c_write_received(struct i2c_target_config *config, uint8_t addr){
-	printf("Write received for register %d\n", addr);
-	i2c_start_read(addr);
 	return 0;
 }
 // typedef int (*i2c_target_read_processed_cb_t)(struct i2c_target_config *config, uint8_t *val);
@@ -158,6 +207,13 @@ int our_i2c_stop(struct i2c_target_config *config){
 	address_to_next = NULL;
 	left_to_send = 0;
 	send_buffer = 0x00;
+	
+	if(last_instruction_is_write) {
+		writing_mode = 1;
+		last_instruction_is_write = false;
+	}
+	else register_writing_address = 0xFF;
+
 	return 0;
 }
 
