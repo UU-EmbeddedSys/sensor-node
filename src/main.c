@@ -66,6 +66,32 @@ void sensor_polling(void *p1, void *p2, void *p3)
 
 //I2C
 
+/*
+Explanation for tomorrow:
+basically it supports multibyte read but only single byte write, but thats fine we dont need anything else.
+
+the thing is that when the driver sends one read (of X bytes) and then one write and then one read again,
+everything worked as expected, but then I tested two writes following each other and thats the problem
+I've tried modifying Alessios write function, ive tried using the stock writing a single byte function
+nothing seems to work as expected because what it does is that:
+
+write requests
+write receives (address of register)
+stop
+write requests
+write receives (contents of register)
+write receives (address of the second register to write)
+write receives (contents of the second register )
+
+
+so the problem there was that I cannot know when to start writing the second register
+now i've solved it but yeah we cannot write two bytes to a single memory address
+only single byte writes to each register, but thats all we need
+to configure the sensor node as the sampling rates all fit within one byte for each configuration
+
+
+*/
+
 uint8_t send_buffer = 0x00;
 uint8_t left_to_send = 0;
 uint8_t* address_to_next = NULL;
