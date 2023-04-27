@@ -181,9 +181,6 @@ void adxl345_read_xyz_axis(adxl345_manager_t *adxl345_device)
 	adxl345_device->x_acceleration = ((x) * EARTH_GRAVITY / SENSITIVITY) / EARTH_GRAVITY;
 	adxl345_device->y_acceleration = ((y) * EARTH_GRAVITY / SENSITIVITY) / EARTH_GRAVITY;
 	adxl345_device->z_acceleration = ((z) * EARTH_GRAVITY / SENSITIVITY) / EARTH_GRAVITY;
-
-	LOG_INF("%fg %fg %fg", adxl345_device->x_acceleration, adxl345_device->y_acceleration,
-		adxl345_device->z_acceleration);
 	
 }
 

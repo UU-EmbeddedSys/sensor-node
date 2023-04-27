@@ -20,7 +20,7 @@
 
 #define REFRESH_TIME 500
 
-LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(main);
 
 
 K_THREAD_STACK_DEFINE(i2c_stack, MY_STACK_SIZE);
@@ -52,6 +52,8 @@ void sensor_polling(void *p1, void *p2, void *p3)
 	adxl345_set_frequency(&(sensor_tree.adxl345_device), HZ_25);
 	adxl345_set_measurement_mode(&(sensor_tree.adxl345_device));
 	adxl345_chip_id(&(sensor_tree.adxl345_device));
+	
+	bme680_constructor(&(sensor_tree.bme680_device));
 	ultrasonic_init(&(sensor_tree.ultrasonic_device));
 	while (true) {
 
@@ -63,9 +65,8 @@ void sensor_polling(void *p1, void *p2, void *p3)
 		bme680_read_sensors(&(sensor_tree.bme680_device));
 		ultrasonic_duration(&(sensor_tree.ultrasonic_device));
 
-		printf("CONFIGURATIONS TEMP: %d\n", sensor_tree.bme680_device.temp_oversampling);
+		//printf("CONFIGURATIONS TEMP: %d\n", sensor_tree.bme680_device.temp_oversampling);
 		gpio_pin_toggle_dt(&led0);
-
 	}
 }
 
@@ -93,20 +94,21 @@ double test_value_double = 0.5; //this is because I don't have a real sensor yet
 uint64_t test_value_scale = 0x1122334455667788;
 
 void i2c_write_register(uint8_t value){
+	LOG_DBG("Writing register %02x WITH VALUE %02x\n", register_writing_address, value);
 	
 	switch(register_writing_address){
 		case BME680_CONFIG_HUMIDITY:
-			sensor_tree.bme680_device.hum_oversampling = value;
+			sensor_tree.bme680_device.hum_oversampling = value << HUM_SHIFT;
 			break;
 		case BME680_CONFIG_TEMP:
-			sensor_tree.bme680_device.temp_oversampling = value;
+			sensor_tree.bme680_device.temp_oversampling = value << TEMP_SHIFT;
 			LOG_INF("Writing %d", value);
 			break;
 		case BME680_CONFIG_PRESSURE:
-			sensor_tree.bme680_device.press_oversampling = value;
+			sensor_tree.bme680_device.press_oversampling = value << PRESS_SHIFT;
 			break;
 		default:
-			printf("Writing register %02x WITH VALUE %02x\n", register_writing_address, value);
+			LOG_DBG("UNKNOWN REGISTER\n");
 			break;
 	}
 	writing_mode += 1;
@@ -116,7 +118,7 @@ void i2c_write_register(uint8_t value){
 
 // typedef int (*i2c_target_write_requested_cb_t)(struct i2c_target_config *config);
 int our_i2c_write_requested(struct i2c_target_config *config){
-	LOG_DBG("Write requested \n");
+	LOG_INF("Write requested \n");
 
 	if(!last_instruction_is_write && writing_mode){
 		LOG_DBG("PREPARE FOR WRITING\n");
@@ -135,6 +137,7 @@ int our_i2c_write_requested(struct i2c_target_config *config){
 }
 // typedef int (*i2c_target_read_requested_cb_t)(struct i2c_target_config *config, uint8_t *val);
 int our_i2c_read_requested(struct i2c_target_config *config, uint8_t *val){
+	LOG_INF("READ_REQUESTED");
 	*val = send_buffer;
 	LOG_DBG("Read requested (left to send %d): Answering with 0x%02x\n", left_to_send, *val);	
 	last_instruction_is_write = false;	
@@ -143,7 +146,7 @@ int our_i2c_read_requested(struct i2c_target_config *config, uint8_t *val){
 }
 // typedef int (*i2c_target_write_received_cb_t)( struct i2c_target_config *config, uint8_t val);
 int our_i2c_write_received(struct i2c_target_config *config, uint8_t address){
-	LOG_DBG("Write received %02x\n", address);
+	LOG_INF("Write received %02x\n", address);
 	if(writing_mode && !last_instruction_is_write){
 		i2c_write_register(address);
 		writing_mode = 2;
@@ -191,6 +194,24 @@ int our_i2c_write_received(struct i2c_target_config *config, uint8_t address){
 			left_to_send = 4;
 			break;
 
+		case ADXL345_READ_X:
+			//setup
+			address_to_next = (uint8_t*)&(sensor_tree.adxl345_device.x_acceleration);
+			left_to_send = 4;
+			break;
+
+		case ADXL345_READ_Y:
+			//setup
+			address_to_next = (uint8_t*)&(sensor_tree.adxl345_device.y_acceleration);
+			left_to_send = 4;
+			break;
+		
+		case ADXL345_READ_Z:
+			//setup
+			address_to_next = (uint8_t*)&(sensor_tree.adxl345_device.z_acceleration);
+			left_to_send = 4;
+			break;
+
 		case BME680_CONFIG_HUMIDITY:
 			//setup
 			address_to_next = (uint8_t*)&(sensor_tree.bme680_device.hum_oversampling);
@@ -209,6 +230,12 @@ int our_i2c_write_received(struct i2c_target_config *config, uint8_t address){
 			left_to_send = 1;
 			break;
 		
+		case CLEAR_I2C:
+			//setup
+			address_to_next = NULL;
+			left_to_send = 0;
+			break;
+		
 		default:
 			address_to_next = NULL;
 			left_to_send = 0;
@@ -221,13 +248,13 @@ int our_i2c_write_received(struct i2c_target_config *config, uint8_t address){
 }
 // typedef int (*i2c_target_read_processed_cb_t)(struct i2c_target_config *config, uint8_t *val);
 int our_i2c_read_processed(struct i2c_target_config *config, uint8_t *val){
-	LOG_DBG("Read processed\n");
+	LOG_INF("Read processed\n");
 	*val = 0x00;
 	return 0;
 }
 // typedef int (*i2c_target_stop_cb_t)(struct i2c_target_config *config);
 int our_i2c_stop(struct i2c_target_config *config){
-	LOG_DBG("Stop\n");
+	LOG_INF("Stop\n");
 	address_to_next = NULL;
 	left_to_send = 0;
 	send_buffer = 0x00;

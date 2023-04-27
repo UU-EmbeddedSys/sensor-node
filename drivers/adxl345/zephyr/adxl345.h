@@ -59,9 +59,10 @@ void adxl345_read_xyz_axis(adxl345_manager_t *adxl345_device);
 void adxl345_chip_id(adxl345_manager_t *bme680_device);
 
 void adxl345_set_measurement_mode(adxl345_manager_t *adxl345_device);
-
+void adxl345_set_fifo_mode(adxl345_manager_t *adxl345_device, FIFO_MODE mode);
 void adxl345_constructor(adxl345_manager_t* adxl345_device);
-
+void adxl345_set_frequency(adxl345_manager_t *adxl345_device, FREQUENCY freq);
+void adxl345_set_range(adxl345_manager_t *adxl345_device, RANGE range);
 
 
 void adxl345_read_x_axis(adxl345_manager_t* adxl345_device);
