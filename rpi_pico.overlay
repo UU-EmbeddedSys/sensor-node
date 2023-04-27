@@ -1,27 +1,5 @@
 #include <zephyr/dt-bindings/pinctrl/rpi-pico-rp2040-pinctrl.h>
 
-
-/*/ {
-    fragment@0 {
-        target = <&cpus>;
-        __overlay__ {
-            #address-cells = <1>;
-            #size-cells = <0>;
-            cpu@0 {
-                device_type = "cpu";
-                compatible = "arm,cortex-a0";
-                reg = <0>;
-            };
-            cpu@1 {
-                device_type = "cpu";
-                compatible = "arm,cortex-a0";
-                reg = <1>;
-                enable-method = "arm,v7-m-boot";
-            };
-        };
-    };
-};*/
-
 / {
     aliases {
                led0 = &myled0;

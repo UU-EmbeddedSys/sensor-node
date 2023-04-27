@@ -131,6 +131,7 @@ static int bme680_write_reg(const struct device *i2c_dev, uint8_t *write_buf, ui
 	return err;
 }
 
+
 /**
  * @brief Read the chip ID to verify the communication with the device
  *

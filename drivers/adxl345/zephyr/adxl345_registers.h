@@ -21,6 +21,13 @@
 #define ADXL345_BW_RATE	       0x2C
 #define ADXL345_POWER_CTL      0x2D
 
+// POWER_CTL bits
+#define POWER_CTL_LINK	    5
+#define POWER_CTL_AUTOSLEEP 4
+#define POWER_CTL_MEASURE   3
+#define POWER_CTL_SLEEP	    2
+#define POWER_CTL_WAKEUP    0
+
 #define ADXL345_INT_ENABLE 0x2E
 #define ADXL345_INT_MAP	   0x2F
 #define ADXL345_INT_SOURCE 0x30

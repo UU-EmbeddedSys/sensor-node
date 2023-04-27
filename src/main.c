@@ -46,9 +46,18 @@ void sensor_polling(void *p1, void *p2, void *p3)
 {
 	gpio_pin_configure_dt(&led0, GPIO_OUTPUT_INACTIVE);
 
-	bme680_constructor(&(sensor_tree.bme680_device));
+	adxl345_constructor(&(sensor_tree.adxl345_device));
+	adxl345_set_fifo_mode(&(sensor_tree.adxl345_device), STREAM);
+	adxl345_set_range(&(sensor_tree.adxl345_device), R_16G);
+	adxl345_set_frequency(&(sensor_tree.adxl345_device), HZ_25);
+	adxl345_set_measurement_mode(&(sensor_tree.adxl345_device));
+	adxl345_chip_id(&(sensor_tree.adxl345_device));
 	ultrasonic_init(&(sensor_tree.ultrasonic_device));
 	while (true) {
+
+		adxl345_read_xyz_axis(&(sensor_tree.adxl345_device));
+
+		gpio_pin_toggle_dt(&led0);
 		k_sleep(K_MSEC(REFRESH_TIME));
 		
 		bme680_read_sensors(&(sensor_tree.bme680_device));
