@@ -15,7 +15,7 @@
 #define MY_STACK_SIZE 5000
 #define MY_PRIORITY   5
 
-#define REFRESH_TIME 100
+#define REFRESH_TIME 500
 
 LOG_MODULE_REGISTER(main);
 
@@ -38,21 +38,19 @@ void sensor_polling(void *p1, void *p2, void *p3)
 {
 	gpio_pin_configure_dt(&led0, GPIO_OUTPUT_INACTIVE);
 
-	bme680_constructor(&(sensor_tree.bme680_device));
 	adxl345_constructor(&(sensor_tree.adxl345_device));
-
-
-	bme680_chip_id(&(sensor_tree.bme680_device));
+	adxl345_set_fifo_mode(&(sensor_tree.adxl345_device), STREAM);
+	adxl345_set_range(&(sensor_tree.adxl345_device), R_16G);
+	adxl345_set_frequency(&(sensor_tree.adxl345_device), HZ_25);
+	adxl345_set_measurement_mode(&(sensor_tree.adxl345_device));
 	adxl345_chip_id(&(sensor_tree.adxl345_device));
 
 	while (true) {
-		k_sleep(K_MSEC(REFRESH_TIME));
-		bme680_read_temperature(&(sensor_tree.bme680_device));
 
-		//LOG_INF("I'm doing something\n");
+		adxl345_read_xyz_axis(&(sensor_tree.adxl345_device));
 
-		adxl345_read_x_axis(&(sensor_tree.adxl345_device));
 		gpio_pin_toggle_dt(&led0);
+		k_sleep(K_MSEC(REFRESH_TIME));
 	}
 }
 
@@ -62,9 +60,10 @@ void i2c_communication(void *p1, void *p2, void *p3)
 
 	LOG_INF("I2C thread started\n");
 	while (true) {
-		//LOG_INF("Temperature: %f\n",sensor_tree.bme680_device.last_temperature); // TODO add mutex
+		// LOG_INF("Temperature: %f\n",sensor_tree.bme680_device.last_temperature); // TODO
+		// add mutex
 		gpio_pin_toggle_dt(&led1);
-		k_sleep(K_MSEC(1000));
+		k_sleep(K_MSEC(5000));
 	}
 }
 
