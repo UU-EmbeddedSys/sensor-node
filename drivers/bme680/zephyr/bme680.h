@@ -103,10 +103,8 @@ bme680_pressure_calib_data_t bme680_calib_data_pressure(bme680_manager_t *bme680
 
 void bme680_config_init(bme680_manager_t *bme680_device);
 
+void bme680_config_init(bme680_manager_t *bme680_device);
 
-
-void bme680_config_init(bme680_manager_t* bme680_device);
-
-void bme680_read_sensors(bme680_manager_t* bme680_device);
+void bme680_read_sensors(bme680_manager_t *bme680_device);
 
 #endif /* BME680_H */

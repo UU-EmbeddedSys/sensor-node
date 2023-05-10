@@ -57,8 +57,7 @@
 #define BME680_PRESS_MSB    0x1F
 #define BME680_EAS_STATUS_0 0x1D
 
-#define BME680_TEMP(byte) \
-         byte - BME680_TEMP_MSB
+#define BME680_TEMP(byte) byte - BME680_TEMP_MSB
 
 // Parameters for temperature sensor
 #define BME680_PAR_T1_LSB 0xE9
@@ -68,47 +67,44 @@
 #define BME680_PAR_T3	  0x8C
 
 // Parameters for the pressure sensor
-#define BME680_PAR_P1_LSB     0x8E
-#define BME680_PAR_P1_MSB     0x8F
-#define BME680_PAR_P2_LSB     0x90
-#define BME680_PAR_P2_MSB     0x91
-#define BME680_PAR_P3	      0x92
-#define BME680_PAR_P4_LSB     0x94
-#define BME680_PAR_P4_MSB     0x95
-#define BME680_PAR_P5_LSB     0x96
-#define BME680_PAR_P5_MSB     0x97
-#define BME680_PAR_P6	      0x99
-#define BME680_PAR_P7	      0x98
-#define BME680_PAR_P8_LSB     0x9C
-#define BME680_PAR_P8_MSB     0x9D
-#define BME680_PAR_P9_LSB     0x9E
-#define BME680_PAR_P9_MSB     0x9F
-#define BME680_PAR_P10	      0xA0
+#define BME680_PAR_P1_LSB 0x8E
+#define BME680_PAR_P1_MSB 0x8F
+#define BME680_PAR_P2_LSB 0x90
+#define BME680_PAR_P2_MSB 0x91
+#define BME680_PAR_P3	  0x92
+#define BME680_PAR_P4_LSB 0x94
+#define BME680_PAR_P4_MSB 0x95
+#define BME680_PAR_P5_LSB 0x96
+#define BME680_PAR_P5_MSB 0x97
+#define BME680_PAR_P6	  0x99
+#define BME680_PAR_P7	  0x98
+#define BME680_PAR_P8_LSB 0x9C
+#define BME680_PAR_P8_MSB 0x9D
+#define BME680_PAR_P9_LSB 0x9E
+#define BME680_PAR_P9_MSB 0x9F
+#define BME680_PAR_P10	  0xA0
 
-#define PRESS_PARAM(byte) \
-        byte - BME680_PAR_P1_LSB
+#define PRESS_PARAM(byte) byte - BME680_PAR_P1_LSB
 
 // ADC registers for pressure measurement
 #define BME680_PRESS_ADC_XLSB 0x21
 #define BME680_PRESS_ADC_LSB  0x20
 #define BME680_PRESS_ADC_MSB  0x1F
 
-#define BME680_PRESS(byte) \
-         byte - BME680_PRESS_ADC_MSB
+#define BME680_PRESS(byte) byte - BME680_PRESS_ADC_MSB
 
 // Parameters for the Humidity sensor
-#define BME680_PAR_H1_LSB  0xE2
-#define BME680_PAR_H1_MSB  0xE3
-#define BME680_PAR_H2_LSB  0xE2
-#define BME680_PAR_H2_MSB  0xE1
-#define BME680_PAR_H3	   0xE4
-#define BME680_PAR_H4	   0xE5
-#define BME680_PAR_H5	   0xE6
-#define BME680_PAR_H6	   0xE7
-#define BME680_PAR_H7	   0xE8
+#define BME680_PAR_H1_LSB 0xE2
+#define BME680_PAR_H1_MSB 0xE3
+#define BME680_PAR_H2_LSB 0xE2
+#define BME680_PAR_H2_MSB 0xE1
+#define BME680_PAR_H3	  0xE4
+#define BME680_PAR_H4	  0xE5
+#define BME680_PAR_H5	  0xE6
+#define BME680_PAR_H6	  0xE7
+#define BME680_PAR_H7	  0xE8
 
-#define HUM_PARAM(byte) \
-    byte - BME680_PAR_H2_MSB
+#define HUM_PARAM(byte) byte - BME680_PAR_H2_MSB
 
 // ADC registers for humidy measurements
 #define BME680_HUM_ADC_LSB 0x26

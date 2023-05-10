@@ -131,7 +131,6 @@ static int bme680_write_reg(const struct device *i2c_dev, uint8_t *write_buf, ui
 	return err;
 }
 
-
 /**
  * @brief Read the chip ID to verify the communication with the device
  *
@@ -277,7 +276,8 @@ static int set_forced_mode(bme680_manager_t *bme680_device)
 	uint8_t byte = (bme680_device->hum_oversampling);
 	err = bme680_write_reg(bme680_device->i2c_dev, &byte, 1, BME680_CTRL_HUM);
 
-	byte = bme680_device->forced_mode | bme680_device->temp_oversampling | bme680_device->press_oversampling;
+	byte = bme680_device->forced_mode | bme680_device->temp_oversampling |
+	       bme680_device->press_oversampling;
 	err = bme680_write_reg(bme680_device->i2c_dev, &byte, 1, BME680_CTRL_MEAS);
 	// LOG_HEXDUMP_INF(byte, sizeof(byte), "oversampling bytes");
 	if (err != 0) {

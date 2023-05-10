@@ -1,7 +1,6 @@
 #include "adxl345.h"
 
-
-LOG_MODULE_REGISTER(adxl345);
+LOG_MODULE_REGISTER(adxl345, LOG_LEVEL_INF);
 
 static int adxl345_read_reg(const struct device *i2c_dev, uint8_t *read_buf, uint8_t num_bytes,
 			    uint8_t start_address)
@@ -175,13 +174,11 @@ void adxl345_read_xyz_axis(adxl345_manager_t *adxl345_device)
 		z |= ADXL345_COMPLEMENT;
 	}
 
-
 	LOG_DBG("[RAW] X: %u Y: %u Z: %u", x, y, z);
 
-	adxl345_device->x_acceleration = ((x) * EARTH_GRAVITY / SENSITIVITY) / EARTH_GRAVITY;
-	adxl345_device->y_acceleration = ((y) * EARTH_GRAVITY / SENSITIVITY) / EARTH_GRAVITY;
-	adxl345_device->z_acceleration = ((z) * EARTH_GRAVITY / SENSITIVITY) / EARTH_GRAVITY;
-	
+	adxl345_device->x_acceleration = ((x)*EARTH_GRAVITY / SENSITIVITY) / EARTH_GRAVITY;
+	adxl345_device->y_acceleration = ((y)*EARTH_GRAVITY / SENSITIVITY) / EARTH_GRAVITY;
+	adxl345_device->z_acceleration = ((z)*EARTH_GRAVITY / SENSITIVITY) / EARTH_GRAVITY;
 }
 
 void adxl345_read_active_thresh(adxl345_manager_t *adxl345_device)

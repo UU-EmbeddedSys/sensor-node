@@ -7,16 +7,14 @@
 
 #include <stdint.h>
 
-
-typedef struct ultrasonic_manager_t{
+typedef struct ultrasonic_manager_t {
 	float distance;
-	struct gpio_dt_spec* signal;
+	struct gpio_dt_spec *signal;
 } ultrasonic_manager_t;
 
+void ultrasonic_constructor(ultrasonic_manager_t *ultrasonic_device);
 
-void ultrasonic_constructor(ultrasonic_manager_t* ultrasonic_device);
-
-void ultrasonic_init(ultrasonic_manager_t* ultrasonic_device);
-void ultrasonic_duration(ultrasonic_manager_t* ultrasonic_device);
+void ultrasonic_init(ultrasonic_manager_t *ultrasonic_device);
+void ultrasonic_duration(ultrasonic_manager_t *ultrasonic_device);
 
 #endif /* ULTRASONIC_H */

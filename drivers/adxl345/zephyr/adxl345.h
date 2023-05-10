@@ -11,12 +11,11 @@
 
 #define ADXL345_ADDR 0x53
 
-#define SENSITIVITY   32 // LSB/g
-#define SCALE_FACTOR 31.2/1000 // mg/LSB
+#define SENSITIVITY   32	  // LSB/g
+#define SCALE_FACTOR  31.2 / 1000 // mg/LSB
 #define EARTH_GRAVITY 9.81f
 
-
-#define ADXL345_COMPLEMENT         0xfc00
+#define ADXL345_COMPLEMENT 0xfc00
 
 typedef enum FIFO_MODE {
 	BYPASS = (0 << 7) | (0 << 6),
@@ -60,11 +59,8 @@ void adxl345_chip_id(adxl345_manager_t *bme680_device);
 
 void adxl345_set_measurement_mode(adxl345_manager_t *adxl345_device);
 void adxl345_set_fifo_mode(adxl345_manager_t *adxl345_device, FIFO_MODE mode);
-void adxl345_constructor(adxl345_manager_t* adxl345_device);
+void adxl345_constructor(adxl345_manager_t *adxl345_device);
 void adxl345_set_frequency(adxl345_manager_t *adxl345_device, FREQUENCY freq);
 void adxl345_set_range(adxl345_manager_t *adxl345_device, RANGE range);
-
-
-void adxl345_read_x_axis(adxl345_manager_t* adxl345_device);
 
 #endif /* ADXL345_H */
