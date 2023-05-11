@@ -39,7 +39,7 @@ static void i2c_write_register(uint8_t value)
 		break;
 	case BME680_CONFIG_TEMP:
 		sensor_tree->bme680_device.temp_oversampling = value << TEMP_SHIFT;
-		LOG_INF("Writing %d", value);
+		LOG_DBG("Writing %d", value);
 		break;
 	case BME680_CONFIG_PRESSURE:
 		sensor_tree->bme680_device.press_oversampling = value << PRESS_SHIFT;
@@ -54,7 +54,7 @@ static void i2c_write_register(uint8_t value)
 // typedef int (*i2c_target_write_requested_cb_t)(struct i2c_target_config *config);
 static int our_i2c_write_requested(struct i2c_target_config *config)
 {
-	LOG_INF("Write requested ");
+	LOG_DBG("Write requested");
 
 	if (!last_instruction_is_write && writing_mode) {
 		LOG_DBG("PREPARE FOR WRITING");
@@ -72,7 +72,7 @@ static int our_i2c_write_requested(struct i2c_target_config *config)
 // typedef int (*i2c_target_read_requested_cb_t)(struct i2c_target_config *config, uint8_t *val);
 static int our_i2c_read_requested(struct i2c_target_config *config, uint8_t *val)
 {
-	LOG_INF("READ_REQUESTED");
+	LOG_DBG("READ_REQUESTED");
 	*val = send_buffer;
 	LOG_DBG("Read requested (left to send %d): Answering with 0x%02x", left_to_send, *val);
 	last_instruction_is_write = false;
@@ -82,7 +82,7 @@ static int our_i2c_read_requested(struct i2c_target_config *config, uint8_t *val
 // typedef int (*i2c_target_write_received_cb_t)( struct i2c_target_config *config, uint8_t val);
 static int our_i2c_write_received(struct i2c_target_config *config, uint8_t address)
 {
-	LOG_INF("Write received %02x", address);
+	LOG_INF("Write received 0x%02X", address);
 	if (writing_mode && !last_instruction_is_write) {
 		i2c_write_register(address);
 		writing_mode = 2;
@@ -185,14 +185,14 @@ static int our_i2c_write_received(struct i2c_target_config *config, uint8_t addr
 // typedef int (*i2c_target_read_processed_cb_t)(struct i2c_target_config *config, uint8_t *val);
 static int our_i2c_read_processed(struct i2c_target_config *config, uint8_t *val)
 {
-	LOG_INF("Read processed");
+	LOG_DBG("Read processed");
 	*val = 0x00;
 	return 0;
 }
 // typedef int (*i2c_target_stop_cb_t)(struct i2c_target_config *config);
 static int our_i2c_stop(struct i2c_target_config *config)
 {
-	LOG_INF("Stop");
+	LOG_DBG("Stop");
 	address_to_next = NULL;
 	left_to_send = 0;
 	send_buffer = 0x00;
@@ -234,22 +234,22 @@ int slave_init(sensor_tree_t *sensors)
 {
 	int ret = 0;
 	if (!device_is_ready(i2c_dev)) {
-		printk("I2C device not ready");
+		LOG_ERR("I2C device not ready");
 		return ret;
 	}
 
 	ret = i2c_configure(i2c_dev, i2c_speed_cfg);
 	if (ret < 0) {
-		printk("Failed to configure I2C: %d", ret);
+		LOG_ERR("Failed to configure I2C: %d", ret);
 		return ret;
 	}
 
-	LOG_INF("Speed: %d", I2C_SPEED_GET(i2c_speed_cfg));
+	LOG_DBG("Speed: %d", I2C_SPEED_GET(i2c_speed_cfg));
 
 	/* Enable I2C target mode for the bus driver */
 	ret = i2c_target_register(i2c_dev, &i2c_cfg);
 	if (ret < 0) {
-		printk("Failed to enable I2C target mode: %d", ret);
+		LOG_ERR("Failed to enable I2C target mode: %d", ret);
 		return ret;
 	}
 	// add sensor reference

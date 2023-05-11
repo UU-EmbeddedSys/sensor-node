@@ -27,6 +27,13 @@ struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(LED1_NODE, gpios);
 
 sensor_tree_t sensor_tree;
 
+void print_sensors_value()
+{
+	LOG_INF("T: %f P: %f H: %f", sensor_tree.bme680_device.last_temperature, sensor_tree.bme680_device.last_pressure, sensor_tree.bme680_device.last_humidity);
+	LOG_INF("X: %f Y: %f Z: %f ", sensor_tree.adxl345_device.x_acceleration, sensor_tree.adxl345_device.y_acceleration, sensor_tree.adxl345_device.z_acceleration);
+	LOG_INF("Distance: %f", sensor_tree.ultrasonic_device.distance);
+}
+
 void sensor_polling(void *p1, void *p2, void *p3)
 {
 	gpio_pin_configure_dt(&led0, GPIO_OUTPUT_INACTIVE);
@@ -41,7 +48,7 @@ void sensor_polling(void *p1, void *p2, void *p3)
 	bme680_constructor(&(sensor_tree.bme680_device));
 	ultrasonic_init(&(sensor_tree.ultrasonic_device));
 	while (true) {
-
+		print_sensors_value();
 		gpio_pin_toggle_dt(&led0);
 		k_sleep(K_MSEC(REFRESH_TIME));
 
