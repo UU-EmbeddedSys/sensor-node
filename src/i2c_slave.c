@@ -1,5 +1,7 @@
 #include "i2c_slave.h"
 
+#include <errno.h>
+
 LOG_MODULE_REGISTER(slave, LOG_LEVEL_INF);
 
 static sensor_tree_t *sensor_tree;
@@ -17,6 +19,14 @@ uint8_t writing_mode = 0;
 
 double test_value_double = 0.5; // this is because I don't have a real sensor yet
 uint64_t test_value_scale = 0x1122334455667788;
+
+static i2c_slave_manager_t slave_manager = {
+	.first_write = false,
+	.read_started = false,
+	.remaining_bytes = 0,
+	.buffer = NULL
+};
+
 
 static void i2c_load_next_streamed_value()
 {
@@ -52,158 +62,153 @@ static void i2c_write_register(uint8_t value)
 }
 
 // typedef int (*i2c_target_write_requested_cb_t)(struct i2c_target_config *config);
+/**
+ * @brief Write initiate by the Master, R/W bit = 0. An address will be received.
+ * 
+ * @param config 
+ * @return int 
+ */
 static int our_i2c_write_requested(struct i2c_target_config *config)
 {
-	LOG_DBG("Write requested");
+	LOG_DBG("i2c_write_requested");
 
-	if (!last_instruction_is_write && writing_mode) {
-		LOG_DBG("PREPARE FOR WRITING");
-	} else if (last_instruction_is_write && writing_mode) {
-		LOG_DBG("WE'VE FINISHED PREVIOUS WRITE STREAK");
-		last_instruction_is_write = false;
-		writing_mode = 0;
-	}
-	if (!last_instruction_is_write && !writing_mode) {
-		LOG_DBG("WE COME FROM READING");
-	}
+	slave_manager.first_write = true;
 
 	return 0;
 }
-// typedef int (*i2c_target_read_requested_cb_t)(struct i2c_target_config *config, uint8_t *val);
-static int our_i2c_read_requested(struct i2c_target_config *config, uint8_t *val)
-{
-	LOG_DBG("READ_REQUESTED");
-	*val = send_buffer;
-	LOG_DBG("Read requested (left to send %d): Answering with 0x%02x", left_to_send, *val);
-	last_instruction_is_write = false;
-	i2c_load_next_streamed_value();
-	return 0;
-}
+
 // typedef int (*i2c_target_write_received_cb_t)( struct i2c_target_config *config, uint8_t val);
-static int our_i2c_write_received(struct i2c_target_config *config, uint8_t address)
+/**
+ * @brief The Master send the value to write. If first, it's the register address that want to access.
+ * 
+ * @param config 
+ * @param val 
+ * @return int 
+ */
+static int our_i2c_write_received(struct i2c_target_config *config, uint8_t val)
 {
-	LOG_INF("Write received 0x%02X", address);
-	if (writing_mode && !last_instruction_is_write) {
-		i2c_write_register(address);
-		writing_mode = 2;
-		last_instruction_is_write = true;
-		return 0;
+	LOG_DBG("i2c_write_received [0x%02X]", val);
+	int err = 0;
+	if(slave_manager.first_write)
+	{
+		slave_manager.first_write = false;
+		slave_manager.start_address = val;
 	}
-
-	last_instruction_is_write = true;
-
-	if (writing_mode == 2 && last_instruction_is_write) {
-		register_writing_address = address;
-		last_instruction_is_write = false;
+	else // it's a write
+	{
+		LOG_DBG("W 0x%02X to 0x%02X", val, slave_manager.start_address);
+		switch(slave_manager.start_address) {
+		case BME680_CONFIG_HUMIDITY:
+			sensor_tree->bme680_device.hum_oversampling = val << HUM_SHIFT;
+			break;
+		case BME680_CONFIG_TEMP:
+			sensor_tree->bme680_device.temp_oversampling = val << TEMP_SHIFT;
+			break;
+		case BME680_CONFIG_PRESSURE:
+			sensor_tree->bme680_device.press_oversampling = val << PRESS_SHIFT;
+			break;
+		// TODO Add more
+		default:
+			LOG_DBG("UNKNOWN REGISTER");
+			err = -ENXIO;
+			break;
+		}
 	}
-	switch (address) {
-	case TEST_READ_DOUBLE:
-		// setup
-		address_to_next = (uint8_t *)&test_value_double;
-		left_to_send = 8;
-		break;
-	case TEST_READ_SCALE:
-		// setup
-		address_to_next = (uint8_t *)&test_value_scale;
-		left_to_send = 8;
-		break;
+	return err;
+}
+
+void load_data(i2c_slave_manager_t *slave_manager)
+{
+	switch(slave_manager->start_address)
+	{
 	case BME680_READ_TEMP:
-		// setup
-		address_to_next = (uint8_t *)&(sensor_tree->bme680_device.last_temperature);
-		left_to_send = 8;
+		slave_manager->buffer = (uint8_t *)&(sensor_tree->bme680_device.last_temperature);
+		slave_manager->remaining_bytes = sizeof(sensor_tree->bme680_device.last_temperature);
 		break;
 	case BME680_READ_PRESSURE:
-		// setup
-		address_to_next = (uint8_t *)&(sensor_tree->bme680_device.last_pressure);
-		left_to_send = 8;
+		slave_manager->buffer = (uint8_t *)&(sensor_tree->bme680_device.last_pressure);
+		slave_manager->remaining_bytes = sizeof(sensor_tree->bme680_device.last_pressure);
 		break;
-
 	case BME680_READ_HUMIDITY:
-		// setup
-		address_to_next = (uint8_t *)&(sensor_tree->bme680_device.last_humidity);
-		left_to_send = 8;
+		slave_manager->buffer = (uint8_t *)&(sensor_tree->bme680_device.last_humidity);
+		slave_manager->remaining_bytes = sizeof(sensor_tree->bme680_device.last_humidity);
 		break;
 
 	case ULTRASONIC_READ:
-		// setup
-		address_to_next = (uint8_t *)&(sensor_tree->ultrasonic_device.distance);
-		left_to_send = 4;
+		slave_manager->buffer = (uint8_t *)&(sensor_tree->ultrasonic_device.distance);
+		slave_manager->remaining_bytes = sizeof(sensor_tree->ultrasonic_device.distance);
 		break;
 
 	case ADXL345_READ_X:
-		// setup
-		address_to_next = (uint8_t *)&(sensor_tree->adxl345_device.x_acceleration);
-		left_to_send = 4;
+		slave_manager->buffer = (uint8_t *)&(sensor_tree->adxl345_device.x_acceleration);
+		slave_manager->remaining_bytes = sizeof(sensor_tree->adxl345_device.x_acceleration);
 		break;
 
 	case ADXL345_READ_Y:
-		// setup
-		address_to_next = (uint8_t *)&(sensor_tree->adxl345_device.y_acceleration);
-		left_to_send = 4;
+		slave_manager->buffer = (uint8_t *)&(sensor_tree->adxl345_device.y_acceleration);
+		slave_manager->remaining_bytes = sizeof(sensor_tree->adxl345_device.y_acceleration);
 		break;
 
 	case ADXL345_READ_Z:
-		// setup
-		address_to_next = (uint8_t *)&(sensor_tree->adxl345_device.z_acceleration);
-		left_to_send = 4;
+		slave_manager->buffer = (uint8_t *)&(sensor_tree->adxl345_device.z_acceleration);
+		slave_manager->remaining_bytes = sizeof(sensor_tree->adxl345_device.z_acceleration);
 		break;
 
 	case BME680_CONFIG_HUMIDITY:
-		// setup
-		address_to_next = (uint8_t *)&(sensor_tree->bme680_device.hum_oversampling);
-		left_to_send = 1;
+		slave_manager->buffer = (uint8_t *)&(sensor_tree->bme680_device.hum_oversampling);
+		slave_manager->remaining_bytes = sizeof(sensor_tree->bme680_device.hum_oversampling);
 		break;
 
 	case BME680_CONFIG_PRESSURE:
-		// setup
-		address_to_next = (uint8_t *)&(sensor_tree->bme680_device.press_oversampling);
-		left_to_send = 1;
+		slave_manager->buffer = (uint8_t *)&(sensor_tree->bme680_device.press_oversampling);
+		slave_manager->remaining_bytes = sizeof(sensor_tree->bme680_device.press_oversampling);
 		break;
 
 	case BME680_CONFIG_TEMP:
-		// setup
-		address_to_next = (uint8_t *)&(sensor_tree->bme680_device.temp_oversampling);
-		left_to_send = 1;
+		slave_manager->buffer = (uint8_t *)&(sensor_tree->bme680_device.temp_oversampling);
+		slave_manager->remaining_bytes = sizeof(sensor_tree->bme680_device.temp_oversampling);
 		break;
-
-	case CLEAR_I2C:
-		// setup
-		address_to_next = NULL;
-		left_to_send = 0;
-		break;
-
 	default:
-		address_to_next = NULL;
-		left_to_send = 0;
 		break;
 	}
-	register_writing_address = address;
-	i2c_load_next_streamed_value();
+	LOG_HEXDUMP_DBG(slave_manager->buffer, slave_manager->remaining_bytes, "mngr");
+}
 
+// typedef int (*i2c_target_read_requested_cb_t)(struct i2c_target_config *config, uint8_t *val);
+static int our_i2c_read_requested(struct i2c_target_config *config, uint8_t *val)
+{
+	LOG_DBG("i2c_read_requested");
+	if(slave_manager.read_started == false)
+	{
+		slave_manager.read_started = true;
+		load_data(&slave_manager);
+	}
+	*val = *(slave_manager.buffer);
+	LOG_DBG("0x%02X", *(slave_manager.buffer));
 	return 0;
 }
+
 // typedef int (*i2c_target_read_processed_cb_t)(struct i2c_target_config *config, uint8_t *val);
 static int our_i2c_read_processed(struct i2c_target_config *config, uint8_t *val)
 {
-	LOG_DBG("Read processed");
-	*val = 0x00;
+	LOG_DBG("i2c_read_processed");
+	LOG_DBG("0x%02X", *(slave_manager.buffer));
+	if(slave_manager.remaining_bytes == 0)
+	{
+		*val = *(slave_manager.buffer);
+		return 0;
+	}
+	*val = *(slave_manager.buffer);
+	slave_manager.buffer++;
+	slave_manager.remaining_bytes--;
 	return 0;
 }
 // typedef int (*i2c_target_stop_cb_t)(struct i2c_target_config *config);
 static int our_i2c_stop(struct i2c_target_config *config)
 {
-	LOG_DBG("Stop");
-	address_to_next = NULL;
-	left_to_send = 0;
-	send_buffer = 0x00;
-
-	if (last_instruction_is_write) {
-		writing_mode = 1;
-		last_instruction_is_write = false;
-	} else {
-		register_writing_address = 0xFF;
-	}
-
+	LOG_DBG("i2c_stop\n");
+	slave_manager.first_write = true;
+	slave_manager.read_started = false;
 	return 0;
 }
 

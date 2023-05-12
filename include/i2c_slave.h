@@ -14,6 +14,15 @@
 
 #define SENSOR_NODE_ADDR 0x40
 
+typedef struct i2c_slave_manager_t
+{
+	bool first_write;
+	bool read_started;
+	uint8_t start_address;
+	uint8_t remaining_bytes;
+	uint8_t* buffer;
+} i2c_slave_manager_t;
+
 typedef struct sensor_tree_t {
 	bme680_manager_t bme680_device;
 	adxl345_manager_t adxl345_device;
