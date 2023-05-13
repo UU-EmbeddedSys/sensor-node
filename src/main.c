@@ -55,7 +55,12 @@ void sensor_polling(void *p1, void *p2, void *p3)
 		bme680_read_sensors(&(sensor_tree.bme680_device));
 		adxl345_read_xyz_axis(&(sensor_tree.adxl345_device));
 		ultrasonic_duration(&(sensor_tree.ultrasonic_device));
-
+		// check the values to trigger an interrupt on the driver
+		if(sensor_tree.bme680_device.last_temperature > sensor_tree.bme680_device.temp_thresh && sensor_tree.int_src == NONE)
+		{
+			LOG_INF("giving");
+			k_sem_give(&(sensor_tree.bme680_device.threshold_semaphore));
+		}
 		gpio_pin_toggle_dt(&led0);
 	}
 }
@@ -68,8 +73,19 @@ void i2c_communication_target(void *p1, void *p2, void *p3)
 		LOG_ERR("Failed initilize slave %d", err);
 		return;
 	}
-	while (true) { // busy waiting thread
+	gpio_pin_configure_dt(&led1, GPIO_OUTPUT_INACTIVE); // INTERRUPT PIN
+	while (true) { 
+		if(k_sem_take(&(sensor_tree.bme680_device.threshold_semaphore), K_NO_WAIT) == 0)
+		{
+			// TODO set the interrupt source register and write the GPIO pin
+			gpio_pin_set_dt(&led1, 1);
+			sensor_tree.int_src = TEMPERATURE;
+		}
 		k_sleep(K_MSEC(REFRESH_TIME));
+		if(sensor_tree.int_src == NONE)
+		{ // RESET the interrupt pin
+			gpio_pin_set_dt(&led1, 0);
+		}
 	}
 }
 
@@ -81,6 +97,7 @@ void main(void)
 	k_tid_t polling_thread_tid = k_thread_create(
 		&polling_thread, sensor_polling_stack, K_THREAD_STACK_SIZEOF(sensor_polling_stack),
 		sensor_polling, NULL, NULL, NULL, MY_PRIORITY, K_INHERIT_PERMS, K_FOREVER);
+	
 
 	k_thread_cpu_pin((k_tid_t)&polling_thread_tid, 0);
 	k_thread_cpu_pin((k_tid_t)&i2c_thread_tid, 1);

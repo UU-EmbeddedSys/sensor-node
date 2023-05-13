@@ -30,6 +30,11 @@ typedef struct bme680_manager_t {
 	uint8_t hum_oversampling;   // 0x72 <2..0>
 	uint8_t press_oversampling; // 0x74 <4..2>
 	uint8_t forced_mode;
+	struct k_sem threshold_semaphore;
+
+	double temp_thresh;
+	double hum_thresh;
+	double press_thresh;
 
 	double last_temperature;
 	double last_humidity;

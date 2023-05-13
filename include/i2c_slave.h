@@ -14,6 +14,16 @@
 
 #define SENSOR_NODE_ADDR 0x40
 
+typedef enum int_source_t
+{
+	NONE,
+	HUMIDITY,
+	TEMPERATURE,
+	PRESSURE,
+	DISTANCE,
+	ACCELERATOR
+} int_source_t;
+
 typedef struct i2c_slave_manager_t
 {
 	bool first_write;
@@ -27,6 +37,7 @@ typedef struct sensor_tree_t {
 	bme680_manager_t bme680_device;
 	adxl345_manager_t adxl345_device;
 	ultrasonic_manager_t ultrasonic_device;
+	int_source_t int_src;
 } sensor_tree_t;
 
 int slave_init(sensor_tree_t *sensor_tree);

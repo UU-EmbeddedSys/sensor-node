@@ -80,35 +80,3 @@ void ultrasonic_duration(ultrasonic_manager_t *ultrasonic_device)
 			   GPIO_INPUT);
 	start_read = true;
 }
-
-void ultrasonic_constructor(ultrasonic_manager_t *ultrasonic_device)
-{
-	int err;
-	ultrasonic_device->signal = &us0; // GPIO_DT_SPEC_GET(DT_NODELABEL(my_us), gpios);
-
-	if (ultrasonic_device->signal == NULL) {
-		LOG_ERR("Failed to get the device from DTS");
-	}
-
-	err = gpio_pin_interrupt_configure_dt(ultrasonic_device->signal, GPIO_INT_EDGE_BOTH);
-	if (err != 0) {
-		LOG_ERR("Error %d: failed to configure interrupt on pin %u\n", err,
-			ultrasonic_device->signal->pin);
-		return;
-	}
-
-	gpio_init_callback(&ultrasonic_cb_data, ultrasonic_isr,
-			   BIT(ultrasonic_device->signal->pin));
-	err = gpio_add_callback(ultrasonic_device->signal->port, &ultrasonic_cb_data);
-	if (err != 0) {
-		LOG_ERR("Error %d: failed to add callback on pin %u\n", err,
-			ultrasonic_device->signal->pin);
-		return;
-	}
-
-	// check if it's an input pin
-	// int pin_type = gpio_pin_is_input(ultrasonic_device->signal->port,
-	// ultrasonic_device->signal->pin); pin_type = (pin_type << 1) |
-	// gpio_pin_is_output(ultrasonic_device->signal->port, ultrasonic_device->signal->pin);
-	// LOG_INF("PIN TYPE: %02x\n", pin_type);
-}

@@ -12,8 +12,6 @@ typedef struct ultrasonic_manager_t {
 	struct gpio_dt_spec *signal;
 } ultrasonic_manager_t;
 
-void ultrasonic_constructor(ultrasonic_manager_t *ultrasonic_device);
-
 void ultrasonic_init(ultrasonic_manager_t *ultrasonic_device);
 void ultrasonic_duration(ultrasonic_manager_t *ultrasonic_device);
 

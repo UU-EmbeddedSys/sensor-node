@@ -4,6 +4,8 @@
 
 LOG_MODULE_REGISTER(slave, LOG_LEVEL_INF);
 
+const uint8_t SENSOR_NODE_ID = 0xAA;
+
 static sensor_tree_t *sensor_tree;
 
 const struct device *i2c_dev = DEVICE_DT_GET(DT_NODELABEL(i2c1));
@@ -107,6 +109,9 @@ static int our_i2c_write_received(struct i2c_target_config *config, uint8_t val)
 		case BME680_CONFIG_PRESSURE:
 			sensor_tree->bme680_device.press_oversampling = val << PRESS_SHIFT;
 			break;
+		case INT_SOURCE:
+			sensor_tree->int_src = val;
+			break;
 		// TODO Add more
 		default:
 			LOG_DBG("UNKNOWN REGISTER");
@@ -119,8 +124,21 @@ static int our_i2c_write_received(struct i2c_target_config *config, uint8_t val)
 
 void load_data(i2c_slave_manager_t *slave_manager)
 {
+	// LOG_INF("addr: [0x%02X]", slave_manager->start_address)
 	switch(slave_manager->start_address)
 	{
+	case SENSOR_ID:
+		slave_manager->buffer = (uint8_t*)&SENSOR_NODE_ID;
+		slave_manager->remaining_bytes = sizeof(SENSOR_NODE_ID);
+		break;
+	case INT_ENABLE: // FIXME
+		slave_manager->buffer = (uint8_t*)&SENSOR_NODE_ID;
+		slave_manager->remaining_bytes = sizeof(SENSOR_NODE_ID);
+		break;
+	case INT_SOURCE: // FIXME
+		slave_manager->buffer = (uint8_t*)&(sensor_tree->int_src);
+		slave_manager->remaining_bytes = sizeof(sensor_tree->int_src);
+		break;
 	case BME680_READ_TEMP:
 		slave_manager->buffer = (uint8_t *)&(sensor_tree->bme680_device.last_temperature);
 		slave_manager->remaining_bytes = sizeof(sensor_tree->bme680_device.last_temperature);

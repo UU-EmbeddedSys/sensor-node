@@ -74,9 +74,13 @@ void bme680_constructor(bme680_manager_t *bme680_device)
 
 	bme680_config_init(bme680_device);
 
+	bme680_device->temp_thresh = 25.0;
+
 	bme680_device->last_humidity = -1;
 	bme680_device->last_pressure = -1;
 	bme680_device->last_temperature = -1;
+
+	k_sem_init(&(bme680_device->threshold_semaphore), 0, 1);
 }
 
 /**
