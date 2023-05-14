@@ -21,7 +21,7 @@ typedef enum int_source_t
 	TEMPERATURE,
 	PRESSURE,
 	DISTANCE,
-	ACCELERATOR
+	ACCELERATION
 } int_source_t;
 
 typedef struct i2c_slave_manager_t
@@ -31,6 +31,8 @@ typedef struct i2c_slave_manager_t
 	uint8_t start_address;
 	uint8_t remaining_bytes;
 	uint8_t* buffer;
+	uint8_t w_idx;
+	uint8_t write_buffer[32];
 } i2c_slave_manager_t;
 
 typedef struct sensor_tree_t {

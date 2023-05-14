@@ -28,12 +28,14 @@
 #define BME680_CONFIG_PRESSURE 0x6A
 #define BME680_CONFIG_HUMIDITY 0x7A
 
+#define TEMP_UP_TRIGGER 0x30 // (8 bytes) 30-31-32-33-34-35-36-37
+#define HUM_UP_TRIGGER 0x38 // (8 bytes) 38-39-3A-3B-3C-3D-3E-3F
+#define PRES_UP_TRIGGER 0x40 // (8 bytes) 40-41-42-43-44-45-46-47
+#define ACCEL_UP_TRIGGER 0x48 // (4 bytes) 48-49-4A-4B
+
 // ULTRASONIC
 // read: 1x4bytes (float) distance in cm
 // configuration 1x1byte (uint8_t) polling rate (not implemented)
 #define ULTRASONIC_READ	   0x80 // until 0x83
-#define ULTRASONIC_POLLING 0x8A
-
-#define CLEAR_I2C 0xFF
 
 #endif

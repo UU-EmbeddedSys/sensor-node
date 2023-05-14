@@ -22,13 +22,12 @@ uint8_t writing_mode = 0;
 double test_value_double = 0.5; // this is because I don't have a real sensor yet
 uint64_t test_value_scale = 0x1122334455667788;
 
-static i2c_slave_manager_t slave_manager = {
-	.first_write = false,
-	.read_started = false,
-	.remaining_bytes = 0,
-	.buffer = NULL
-};
-
+static i2c_slave_manager_t slave_manager = {.first_write = false,
+					    .read_started = false,
+					    .remaining_bytes = 0,
+					    .buffer = NULL,
+					    .w_idx = 0,
+					    .write_buffer = {0}};
 
 static void i2c_load_next_streamed_value()
 {
@@ -66,9 +65,9 @@ static void i2c_write_register(uint8_t value)
 // typedef int (*i2c_target_write_requested_cb_t)(struct i2c_target_config *config);
 /**
  * @brief Write initiate by the Master, R/W bit = 0. An address will be received.
- * 
- * @param config 
- * @return int 
+ *
+ * @param config
+ * @return int
  */
 static int our_i2c_write_requested(struct i2c_target_config *config)
 {
@@ -81,25 +80,24 @@ static int our_i2c_write_requested(struct i2c_target_config *config)
 
 // typedef int (*i2c_target_write_received_cb_t)( struct i2c_target_config *config, uint8_t val);
 /**
- * @brief The Master send the value to write. If first, it's the register address that want to access.
- * 
- * @param config 
- * @param val 
- * @return int 
+ * @brief The Master send the value to write. If first, it's the register address that want to
+ * access.
+ *
+ * @param config
+ * @param val
+ * @return int
  */
 static int our_i2c_write_received(struct i2c_target_config *config, uint8_t val)
 {
 	LOG_DBG("i2c_write_received [0x%02X]", val);
 	int err = 0;
-	if(slave_manager.first_write)
-	{
+	if (slave_manager.first_write) {
 		slave_manager.first_write = false;
 		slave_manager.start_address = val;
-	}
-	else // it's a write
+	} else // it's a write
 	{
 		LOG_DBG("W 0x%02X to 0x%02X", val, slave_manager.start_address);
-		switch(slave_manager.start_address) {
+		switch (slave_manager.start_address) {
 		case BME680_CONFIG_HUMIDITY:
 			sensor_tree->bme680_device.hum_oversampling = val << HUM_SHIFT;
 			break;
@@ -111,6 +109,18 @@ static int our_i2c_write_received(struct i2c_target_config *config, uint8_t val)
 			break;
 		case INT_SOURCE:
 			sensor_tree->int_src = val;
+			break;
+		case TEMP_UP_TRIGGER:
+			slave_manager.write_buffer[slave_manager.w_idx++] = val;
+			break;
+		case HUM_UP_TRIGGER:
+			slave_manager.write_buffer[slave_manager.w_idx++] = val;
+			break;
+		case PRES_UP_TRIGGER:
+			slave_manager.write_buffer[slave_manager.w_idx++] = val;
+			break;
+		case ACCEL_UP_TRIGGER:
+			slave_manager.write_buffer[slave_manager.w_idx++] = val;
 			break;
 		// TODO Add more
 		default:
@@ -125,23 +135,23 @@ static int our_i2c_write_received(struct i2c_target_config *config, uint8_t val)
 void load_data(i2c_slave_manager_t *slave_manager)
 {
 	// LOG_INF("addr: [0x%02X]", slave_manager->start_address)
-	switch(slave_manager->start_address)
-	{
+	switch (slave_manager->start_address) {
 	case SENSOR_ID:
-		slave_manager->buffer = (uint8_t*)&SENSOR_NODE_ID;
+		slave_manager->buffer = (uint8_t *)&SENSOR_NODE_ID;
 		slave_manager->remaining_bytes = sizeof(SENSOR_NODE_ID);
 		break;
 	case INT_ENABLE: // FIXME
-		slave_manager->buffer = (uint8_t*)&SENSOR_NODE_ID;
+		slave_manager->buffer = (uint8_t *)&SENSOR_NODE_ID;
 		slave_manager->remaining_bytes = sizeof(SENSOR_NODE_ID);
 		break;
-	case INT_SOURCE: // FIXME
-		slave_manager->buffer = (uint8_t*)&(sensor_tree->int_src);
+	case INT_SOURCE:
+		slave_manager->buffer = (uint8_t *)&(sensor_tree->int_src);
 		slave_manager->remaining_bytes = sizeof(sensor_tree->int_src);
 		break;
 	case BME680_READ_TEMP:
 		slave_manager->buffer = (uint8_t *)&(sensor_tree->bme680_device.last_temperature);
-		slave_manager->remaining_bytes = sizeof(sensor_tree->bme680_device.last_temperature);
+		slave_manager->remaining_bytes =
+			sizeof(sensor_tree->bme680_device.last_temperature);
 		break;
 	case BME680_READ_PRESSURE:
 		slave_manager->buffer = (uint8_t *)&(sensor_tree->bme680_device.last_pressure);
@@ -174,17 +184,37 @@ void load_data(i2c_slave_manager_t *slave_manager)
 
 	case BME680_CONFIG_HUMIDITY:
 		slave_manager->buffer = (uint8_t *)&(sensor_tree->bme680_device.hum_oversampling);
-		slave_manager->remaining_bytes = sizeof(sensor_tree->bme680_device.hum_oversampling);
+		slave_manager->remaining_bytes =
+			sizeof(sensor_tree->bme680_device.hum_oversampling);
 		break;
 
 	case BME680_CONFIG_PRESSURE:
 		slave_manager->buffer = (uint8_t *)&(sensor_tree->bme680_device.press_oversampling);
-		slave_manager->remaining_bytes = sizeof(sensor_tree->bme680_device.press_oversampling);
+		slave_manager->remaining_bytes =
+			sizeof(sensor_tree->bme680_device.press_oversampling);
 		break;
 
 	case BME680_CONFIG_TEMP:
 		slave_manager->buffer = (uint8_t *)&(sensor_tree->bme680_device.temp_oversampling);
-		slave_manager->remaining_bytes = sizeof(sensor_tree->bme680_device.temp_oversampling);
+		slave_manager->remaining_bytes =
+			sizeof(sensor_tree->bme680_device.temp_oversampling);
+		break;
+
+	case TEMP_UP_TRIGGER:
+		slave_manager->buffer = (uint8_t *)&(sensor_tree->bme680_device.temp_thresh);
+		slave_manager->remaining_bytes = sizeof(sensor_tree->bme680_device.temp_thresh);
+		break;
+	case HUM_UP_TRIGGER:
+		slave_manager->buffer = (uint8_t *)&(sensor_tree->bme680_device.hum_thresh);
+		slave_manager->remaining_bytes = sizeof(sensor_tree->bme680_device.hum_thresh);
+		break;
+	case PRES_UP_TRIGGER:
+		slave_manager->buffer = (uint8_t *)&(sensor_tree->bme680_device.press_thresh);
+		slave_manager->remaining_bytes = sizeof(sensor_tree->bme680_device.press_thresh);
+		break;
+	case ACCEL_UP_TRIGGER:
+		slave_manager->buffer = (uint8_t *)&(sensor_tree->adxl345_device.acceleration_threshold);
+		slave_manager->remaining_bytes = sizeof(sensor_tree->adxl345_device.acceleration_threshold);
 		break;
 	default:
 		break;
@@ -196,8 +226,7 @@ void load_data(i2c_slave_manager_t *slave_manager)
 static int our_i2c_read_requested(struct i2c_target_config *config, uint8_t *val)
 {
 	LOG_DBG("i2c_read_requested");
-	if(slave_manager.read_started == false)
-	{
+	if (slave_manager.read_started == false) {
 		slave_manager.read_started = true;
 		load_data(&slave_manager);
 	}
@@ -211,8 +240,7 @@ static int our_i2c_read_processed(struct i2c_target_config *config, uint8_t *val
 {
 	LOG_DBG("i2c_read_processed");
 	LOG_DBG("0x%02X", *(slave_manager.buffer));
-	if(slave_manager.remaining_bytes == 0)
-	{
+	if (slave_manager.remaining_bytes == 0) {
 		*val = *(slave_manager.buffer);
 		return 0;
 	}
@@ -225,6 +253,36 @@ static int our_i2c_read_processed(struct i2c_target_config *config, uint8_t *val
 static int our_i2c_stop(struct i2c_target_config *config)
 {
 	LOG_DBG("i2c_stop\n");
+	LOG_DBG("Stop op on [0x%02X]", slave_manager.start_address);
+	LOG_HEXDUMP_DBG(slave_manager.write_buffer, slave_manager.w_idx, "");
+	switch (slave_manager.start_address) {
+	case TEMP_UP_TRIGGER:
+		memcpy(&(sensor_tree->bme680_device.temp_thresh), slave_manager.write_buffer,
+		       slave_manager.w_idx);
+		LOG_INF("New T threshold: %f", sensor_tree->bme680_device.temp_thresh);
+		break;
+	case HUM_UP_TRIGGER:
+		memcpy(&(sensor_tree->bme680_device.hum_thresh), slave_manager.write_buffer,
+		       slave_manager.w_idx);
+		LOG_INF("New H threshold: %f", sensor_tree->bme680_device.hum_thresh);
+		break;
+	case PRES_UP_TRIGGER:
+		memcpy(&(sensor_tree->bme680_device.press_thresh), slave_manager.write_buffer,
+		       slave_manager.w_idx);
+		LOG_INF("New P threshold: %f", sensor_tree->bme680_device.press_thresh);
+		break;
+	case ACCEL_UP_TRIGGER:
+		memcpy(&(sensor_tree->adxl345_device.acceleration_threshold),
+		       slave_manager.write_buffer, slave_manager.w_idx);
+		LOG_INF("New ACC threshold: %f",
+			sensor_tree->adxl345_device.acceleration_threshold);
+		break;
+	default:
+		break;
+	}
+	LOG_DBG("Completed %s on addr [0x%02X]", (slave_manager.read_started ? "READ" : "WRITE"),
+		slave_manager.start_address);
+	slave_manager.w_idx = 0;
 	slave_manager.first_write = true;
 	slave_manager.read_started = false;
 	return 0;
