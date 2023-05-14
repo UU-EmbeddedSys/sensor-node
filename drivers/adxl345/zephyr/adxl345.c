@@ -66,7 +66,13 @@ void adxl345_constructor(adxl345_manager_t *adxl345_device)
 	if (err != 0) {
 		LOG_ERR("i2c_configure\n");
 	}
-	LOG_INF("I2C device configured\n");
+	LOG_DBG("I2C device configured\n");
+	adxl345_device->x_acceleration = 0.0;
+	adxl345_device->y_acceleration = 0.0;
+	adxl345_device->z_acceleration = 0.0;
+
+	// Init semaphore
+	k_sem_init(&(adxl345_device->adxl_sem), 0 , 1);
 }
 
 /**
@@ -149,7 +155,7 @@ void adxl345_read_xyz_axis(adxl345_manager_t *adxl345_device)
 {
 	int err = 0;
 	// adxl345_read_xyz_offset(adxl345_device);
-	uint8_t axis_data[6];
+	uint8_t axis_data[6] = {0};
 	err = adxl345_read_reg(adxl345_device->i2c_dev, axis_data, sizeof(axis_data),
 			       ADXL345_DATAX0);
 	if (err != 0) {

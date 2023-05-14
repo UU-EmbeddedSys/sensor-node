@@ -49,6 +49,9 @@ typedef struct adxl345_manager_t {
 	float x_acceleration;
 	float y_acceleration;
 	float z_acceleration;
+
+	float acceleration_threshold;
+	struct k_sem adxl_sem;
 } adxl345_manager_t;
 
 void adxl345_constructor(adxl345_manager_t *adxl345_device);

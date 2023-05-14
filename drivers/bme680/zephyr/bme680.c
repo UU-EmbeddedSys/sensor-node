@@ -80,7 +80,7 @@ void bme680_constructor(bme680_manager_t *bme680_device)
 	bme680_device->last_pressure = -1;
 	bme680_device->last_temperature = -1;
 
-	k_sem_init(&(bme680_device->threshold_semaphore), 0, 1);
+	k_sem_init(&(bme680_device->bme_sem), 0, 1);
 }
 
 /**

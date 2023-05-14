@@ -9,6 +9,8 @@
 
 typedef struct ultrasonic_manager_t {
 	float distance;
+	float trigger_threshold;
+	struct k_sem us_sem;
 	struct gpio_dt_spec *signal;
 } ultrasonic_manager_t;
 

@@ -63,6 +63,8 @@ void ultrasonic_init(ultrasonic_manager_t *ultrasonic_device)
 		return;
 	}
 	ultrasonic_device_global = ultrasonic_device;
+	// Init semaphore
+	k_sem_init(&(ultrasonic_device->us_sem), 0, 1);
 }
 
 void ultrasonic_duration(ultrasonic_manager_t *ultrasonic_device)
